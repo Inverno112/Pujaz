@@ -3,8 +3,10 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
-# Variables locales con secretos (se versiona solo .env.example)
+# Configuración local y secretos; conservar plantillas de ejemplo.
 .env
+.env.*
+!.env.example
 
 # macOS
 .DS_Store
