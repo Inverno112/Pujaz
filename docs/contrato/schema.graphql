@@ -17,6 +17,13 @@ type User {
   # La contraseña nunca se expone
 }
 
+# Datos públicos de quien puja: solo id y nombre, nunca el correo.
+# Se usa en las pujas y en los participantes porque auctionUpdated es pública (no pide JWT).
+type Bidder {
+  id: ID!
+  name: String!
+}
+
 type AuthPayload {
   token: String!   # JWT
   user: User!
@@ -41,7 +48,7 @@ enum AuctionStatus {
 type Bid {
   id: ID!
   amount: Float!
-  bidder: User!
+  bidder: Bidder!       # Solo id y nombre (sin correo)
   createdAt: DateTime!
 }
 
@@ -50,7 +57,7 @@ type Auction {
   item: Item!            # Viene del MS Catálogo
   currentPrice: Float!   # Puja más alta o precio base si no hay pujas
   winningBid: Bid        # null si no hay pujas
-  participants: [User!]! # Usuarios que han pujado
+  participants: [Bidder!]! # Quienes han pujado (solo id y nombre)
   endsAt: DateTime!
   status: AuctionStatus!
 }
@@ -97,6 +104,7 @@ input CreateItemInput {
   images: [String!]
   documents: [String!]
   basePrice: Float!
+  endsAt: DateTime       # Cierre de la subasta. Si no viene, el Gateway usa una duración por defecto
 }
 
 # ---------- Lectura ----------
