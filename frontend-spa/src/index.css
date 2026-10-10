@@ -115,3 +115,49 @@ body {
 .mensaje-error {
   color: #cf222e;
 }
+
+.layout-usuario {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #57606a;
+}
+
+.boton-enlace {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #0969da;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.pagina-angosta {
+  max-width: 420px;
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.formulario input {
+  padding: 8px;
+}
+
+.formulario button[type='submit'] {
+  align-self: flex-start;
+  padding: 8px 16px;
+}
+
+.precio-actual {
+  font-size: 20px;
+}
+
+.mensaje-ok {
+  color: #1a7f37;
+}

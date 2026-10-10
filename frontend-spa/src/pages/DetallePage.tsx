@@ -1,9 +1,10 @@
 // Detalle de un artículo (query `item`).
-// La sección «Subasta» queda lista para el panel en tiempo real y la puja (KAN-34).
+// La sección «Subasta» muestra el panel en tiempo real y el formulario de puja (KAN-34).
 import { useQuery } from '@apollo/client/react'
 import { Link, useParams } from 'react-router-dom'
 import { GET_ITEM } from '../api/items'
-import { formatearFecha, formatearPrecio, nombreEstado } from '../utils/formato'
+import { PanelSubasta } from '../components/PanelSubasta'
+import { formatearPrecio } from '../utils/formato'
 
 export function DetallePage() {
   const { id = '' } = useParams()
@@ -67,21 +68,14 @@ export function DetallePage() {
         </section>
       )}
 
-      <section aria-labelledby="titulo-subasta" className="panel-subasta">
-        <h2 id="titulo-subasta">Subasta</h2>
-        {item.auction ? (
-          <>
-            <p>
-              Precio actual: <strong>{formatearPrecio(item.auction.currentPrice)}</strong>
-            </p>
-            <p>Estado: {nombreEstado(item.auction.status)}</p>
-            <p>Cierra: {formatearFecha(item.auction.endsAt)}</p>
-            {/* KAN-34: aquí van el panel en tiempo real (auctionUpdated) y el formulario de puja. */}
-          </>
-        ) : (
+      {item.auction ? (
+        <PanelSubasta subasta={item.auction} />
+      ) : (
+        <section aria-labelledby="titulo-subasta" className="panel-subasta">
+          <h2 id="titulo-subasta">Subasta</h2>
           <p>Este artículo todavía no tiene subasta.</p>
-        )}
-      </section>
+        </section>
+      )}
     </article>
   )
 }
