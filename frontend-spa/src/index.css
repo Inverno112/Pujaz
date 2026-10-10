@@ -161,3 +161,54 @@ body {
 .mensaje-ok {
   color: #1a7f37;
 }
+
+.saldos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.saldo {
+  flex: 1;
+  min-width: 200px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #d8dee4;
+  border-radius: 8px;
+}
+
+.saldo p {
+  margin: 4px 0;
+}
+
+.saldo-valor {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.tabla-movimientos {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.tabla-movimientos th,
+.tabla-movimientos td {
+  padding: 8px;
+  border-bottom: 1px solid #d8dee4;
+  text-align: left;
+}
+
+.monto-negativo {
+  color: #cf222e;
+}
+
+.monto-positivo {
+  color: #1a7f37;
+}
+
+.zona-peligro {
+  padding: 12px;
+  border: 1px solid #cf222e;
+  border-radius: 8px;
+}

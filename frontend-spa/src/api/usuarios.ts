@@ -40,3 +40,41 @@ export const LOGIN: TypedDocumentNode<
     }
   }
 `
+
+export const REGISTER: TypedDocumentNode<
+  { register: AuthPayload },
+  { input: { name: string; email: string; password: string } }
+> = gql`
+  mutation Register($input: RegisterInput!) {
+    register(input: $input) {
+      token
+      user {
+        id
+        name
+        email
+        createdAt
+      }
+    }
+  }
+`
+
+// Solo se envían los campos que cambian (todos son opcionales en UpdateUserInput).
+export const UPDATE_USER: TypedDocumentNode<
+  { updateUser: Usuario },
+  { input: { name?: string; email?: string; password?: string } }
+> = gql`
+  mutation UpdateUser($input: UpdateUserInput!) {
+    updateUser(input: $input) {
+      id
+      name
+      email
+      createdAt
+    }
+  }
+`
+
+export const DELETE_USER: TypedDocumentNode<{ deleteUser: boolean }, Record<string, never>> = gql`
+  mutation DeleteUser {
+    deleteUser
+  }
+`

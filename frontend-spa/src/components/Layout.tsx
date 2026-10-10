@@ -27,7 +27,10 @@ export function Layout() {
               <NavLink to="/perfil">Mi perfil</NavLink>
             </>
           ) : (
-            <NavLink to="/login">Iniciar sesión</NavLink>
+            <>
+              <NavLink to="/login">Iniciar sesión</NavLink>
+              <NavLink to="/registro">Crear cuenta</NavLink>
+            </>
           )}
         </nav>
         {usuario && (

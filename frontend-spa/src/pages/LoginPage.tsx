@@ -85,6 +85,9 @@ export function LoginPage() {
           </p>
         )}
       </form>
+      <p>
+        ¿No tienes cuenta? <Link to="/registro">Crea una</Link>
+      </p>
     </section>
   )
 }
