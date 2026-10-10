@@ -58,3 +58,27 @@ type WalletResponse struct {
 type DepositRequest struct {
 	Amount float64 `json:"amount"`
 }
+
+type User struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Email  string `json:"email"`
+	Role   string `json:"role,omitempty"`
+	Status string `json:"status,omitempty"`
+}
+
+type CreateUserRequest struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type UpdateUserRequest struct {
+	Name  *string `json:"name"`
+	Email *string `json:"email"`
+}
+
+type VerifyCredentialsRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}

@@ -17,7 +17,7 @@ import (
 func main() {
 	dbConn := os.Getenv("DATABASE_URL")
 	if dbConn == "" {
-		dbConn = "postgres://pujaz_user:pujaz_password@postgres-db:5432/pujaz_transaccional?sslmode=disable"
+		dbConn = "postgres://pujaz_user:pujaz_password@localhost:5432/pujaz_transaccional?sslmode=disable"
 	}
 	
 	db, err := sql.Open("postgres", dbConn)
@@ -35,9 +35,13 @@ func main() {
 	walletSvc := services.NewWalletService(walletRepo)
 	walletCtrl := controllers.NewWalletController(walletSvc)
 
+	userRepo := repositories.NewUserRepository(db)
+	userSvc := services.NewUserService(userRepo)
+	userCtrl := controllers.NewUserController(userSvc)
+
 	mux := http.NewServeMux()
 	routes.SetupAuctionRoutes(mux, ctrl)
-	routes.SetupWalletRoutes(mux, walletCtrl)
+	routes.SetupUserRoutes(mux, userCtrl, walletCtrl)
 	routes.SetupHealthRoutes(mux)
 
 	port := os.Getenv("PORT")
