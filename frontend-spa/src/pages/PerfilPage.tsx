@@ -135,12 +135,12 @@ function Perfil({ usuario }: { usuario: Usuario }) {
           <button type="button" onClick={() => void borrarCuenta()} disabled={eliminando}>
             Sí, eliminar mi cuenta
           </button>{' '}
-          <button type="button" onClick={() => setConfirmandoBorrado(false)}>
+          <button type="button" className="boton-secundario" onClick={() => setConfirmandoBorrado(false)}>
             Cancelar
           </button>
         </div>
       ) : (
-        <button type="button" onClick={() => setConfirmandoBorrado(true)}>
+        <button type="button" className="boton-peligro" onClick={() => setConfirmandoBorrado(true)}>
           Eliminar mi cuenta
         </button>
       )}

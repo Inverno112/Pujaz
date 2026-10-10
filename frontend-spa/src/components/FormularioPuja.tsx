@@ -7,6 +7,9 @@ import { PLACE_BID, SUBASTA_TRAS_PUJA, type AuctionDetail } from '../api/items'
 import { useSesion } from '../session/SessionContext'
 import { formatearPrecio } from '../utils/formato'
 
+// Atajos para subir la oferta sobre el precio actual.
+const INCREMENTOS = [5000, 10000, 20000]
+
 function mensajeDeError(error: unknown) {
   switch (codigoError(error)) {
     case 'BID_TOO_LOW':
@@ -80,7 +83,19 @@ export function FormularioPuja({ subasta }: { subasta: AuctionDetail }) {
   }
 
   return (
-    <form className="formulario" onSubmit={enviar}>
+    <form className="formulario formulario-puja" onSubmit={enviar}>
+      <div className="atajos" role="group" aria-label="Subir la oferta rápido">
+        {INCREMENTOS.map((incremento) => (
+          <button
+            key={incremento}
+            type="button"
+            className="boton-secundario"
+            onClick={() => setMonto(String(subasta.currentPrice + incremento))}
+          >
+            + {formatearPrecio(incremento)}
+          </button>
+        ))}
+      </div>
       <label htmlFor="monto-puja">Tu oferta (COP)</label>
       <input
         id="monto-puja"
@@ -93,7 +108,7 @@ export function FormularioPuja({ subasta }: { subasta: AuctionDetail }) {
         value={monto}
         onChange={(evento) => setMonto(evento.target.value)}
       />
-      <button type="submit" disabled={loading}>
+      <button type="submit" className="boton-pujar" disabled={loading}>
         {loading ? 'Enviando…' : 'Pujar'}
       </button>
       {error !== null && (
