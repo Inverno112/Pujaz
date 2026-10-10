@@ -20,3 +20,7 @@ def obtener_articulos():
         {"id": "a101", "titulo": "Mazda 3 2018", "categoria": "vehiculos"},
         {"id": "a102", "titulo": "Óleo paisaje andino", "categoria": "arte"}
     ]
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}

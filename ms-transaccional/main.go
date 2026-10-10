@@ -38,6 +38,7 @@ func main() {
 	mux := http.NewServeMux()
 	routes.SetupAuctionRoutes(mux, ctrl)
 	routes.SetupWalletRoutes(mux, walletCtrl)
+	routes.SetupHealthRoutes(mux)
 
 	port := os.Getenv("PORT")
 	if port == "" {
