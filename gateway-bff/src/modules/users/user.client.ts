@@ -13,6 +13,13 @@ export interface NewUser {
   password: string;
 }
 
+// Solo los campos que cambian (rest.md §1.1, PATCH).
+export interface UserChanges {
+  name?: string;
+  email?: string;
+  password?: string;
+}
+
 export interface Credentials {
   email: string;
   password: string;
@@ -25,4 +32,8 @@ export interface UserClient {
   verifyCredentials(input: Credentials): Promise<User>;
   /** GET /users/{userId} · Errores: NOT_FOUND */
   getUser(userId: string): Promise<User>;
+  /** PATCH /users/{userId} · Errores: NOT_FOUND, EMAIL_TAKEN, BAD_USER_INPUT */
+  updateUser(userId: string, changes: UserChanges): Promise<User>;
+  /** DELETE /users/{userId} (204) · Errores: NOT_FOUND */
+  deleteUser(userId: string): Promise<void>;
 }

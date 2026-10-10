@@ -37,6 +37,13 @@ describe('MockAuctionClient', () => {
     expect(await client.getAuctionsByItemIds([MOCK_ITEM_IDS.painting, 'no-existe'])).toEqual([]);
   });
 
+  it('getAuctionsByIds omite los ids que no existen', async () => {
+    const client = new MockAuctionClient();
+    const auctions = await client.getAuctionsByIds(['13', 'no-existe', '12']);
+    expect(auctions.map((auction) => auction.id).sort()).toEqual(['12', '13']);
+    expect(await client.getAuctionsByIds([])).toEqual([]);
+  });
+
   it('currentPrice es la puja más alta y participants no repite usuarios', async () => {
     const [auction] = await new MockAuctionClient().getAuctionsByItemIds([MOCK_ITEM_IDS.watch]);
     expect(auction!.currentPrice).toBe(auction!.winningBid!.amount);

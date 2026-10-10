@@ -44,6 +44,43 @@ describe('MockUserClient', () => {
     await expect(new MockUserClient().getUser('999')).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
+  it('updateUser cambia solo lo enviado y no devuelve la contraseña', async () => {
+    const client = new MockUserClient();
+    const user = await client.updateUser('7', { name: 'Ana María' });
+    expect(user).toEqual({ id: '7', name: 'Ana María', email: 'ana@correo.com', createdAt: '2026-10-09T14:00:00Z' });
+    expect(await client.getUser('7')).toEqual(user);
+  });
+
+  it('updateUser con el correo de otro usuario responde EMAIL_TAKEN; con el propio no', async () => {
+    const client = new MockUserClient();
+    const luis = await client.createUser(NEW_USER);
+    await expect(client.updateUser('7', { email: NEW_USER.email })).rejects.toMatchObject({ code: 'EMAIL_TAKEN' });
+    await expect(client.updateUser(luis.id, { email: NEW_USER.email })).resolves.toMatchObject({ id: luis.id });
+  });
+
+  it('updateUser y deleteUser responden NOT_FOUND si el usuario no existe', async () => {
+    const client = new MockUserClient();
+    await expect(client.updateUser('999', { name: 'X' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(client.deleteUser('999')).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('un updateUser inválido no cambia nada', async () => {
+    const client = new MockUserClient();
+    await expect(client.updateUser('7', { name: 'Ana María', password: 'corta' })).rejects.toMatchObject({
+      code: 'BAD_USER_INPUT',
+    });
+    expect((await client.getUser('7')).name).toBe('Ana');
+  });
+
+  it('deleteUser borra el usuario: ya no se encuentra ni puede iniciar sesión', async () => {
+    const client = new MockUserClient();
+    await client.deleteUser('7');
+    await expect(client.getUser('7')).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(client.verifyCredentials({ email: 'ana@correo.com', password: 'secreto123' })).rejects.toMatchObject({
+      code: 'INVALID_CREDENTIALS',
+    });
+  });
+
   it('cada instancia empieza con sus propios datos', async () => {
     await new MockUserClient().createUser(NEW_USER);
     await expect(new MockUserClient().createUser(NEW_USER)).resolves.toBeDefined();

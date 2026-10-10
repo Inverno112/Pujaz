@@ -1,6 +1,7 @@
 import type { GatewayContext } from '../../core/context.js';
 import { AppError } from '../../core/errors.js';
 import type { Item } from '../catalog/index.js';
+import type { WalletMovement } from '../wallet/index.js';
 import type { Auction } from './auction.client.js';
 import type { AuctionLoaders, AuctionsService } from './auctions.service.js';
 
@@ -33,6 +34,11 @@ export function createAuctionsResolvers(auctionsService: AuctionsService) {
         }
         return item;
       },
+    },
+    WalletMovement: {
+      // Las recargas no tienen subasta.
+      auction: (movement: WalletMovement, _args: unknown, ctx: GatewayContext) =>
+        movement.auctionId === null ? null : loaders(ctx).auctionById.load(movement.auctionId),
     },
   };
 }

@@ -43,6 +43,10 @@ export class MockAuctionClient implements AuctionClient {
   async getAuctionsByItemIds(itemIds: string[]): Promise<Auction[]> {
     return this.auctions.filter((auction) => itemIds.includes(auction.itemId)).map(toAuction);
   }
+
+  async getAuctionsByIds(ids: string[]): Promise<Auction[]> {
+    return this.auctions.filter((auction) => ids.includes(auction.id)).map(toAuction);
+  }
 }
 
 // Igual que el MS (rest.md §1): status se calcula al leer, y currentPrice es la puja más alta o el precio base.

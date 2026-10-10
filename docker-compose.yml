@@ -32,7 +32,21 @@ services:
     depends_on:
       - mongo-db
 
-  # (Próximamente: ms-transaccional, gateway-bff, frontend-spa)
+  # 4. Gateway / BFF (Node.js + GraphQL). Usa clientes falsos hasta conectarse a los MS reales.
+  gateway-bff:
+    build:
+      context: ./gateway-bff
+      additional_contexts:
+        contrato: ./docs/contrato
+    ports:
+      - "4000:4000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-}  # Se define en el .env de la raíz (ver .env.example)
+      - USE_MOCKS=true
+      - MS_CATALOGO_URL=http://ms-catalogo:8000
+      - CORS_ORIGIN=http://localhost:5173
+
+  # (Próximamente: ms-transaccional, frontend-spa)
 
 volumes:
   postgres_data:

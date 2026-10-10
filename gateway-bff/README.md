@@ -21,9 +21,10 @@ El Gateway se construye por etapas. Esta tabla dice qué funciona hoy.
 | 1 · Autenticación | `register`, `login`, `me` | ✅ Lista |
 | 2 · Lecturas | `items`, `item`, `auction`, `Item.auction` | ✅ Lista |
 | 3 · Pujas y tiempo real | `placeBid`, `auctionUpdated` | 🔒 Bloqueada por [B1](#b1) |
-| 4 · Billetera | `wallet`, `deposit` | ⏳ Pendiente |
-| 5 · Perfil e ítems | `updateUser`, `deleteUser`, `createItem` | 🔒 Bloqueada por [B2](#b2) |
-| 6 · MS reales | Clientes HTTP y `docker-compose.yml` | ⏳ Pendiente |
+| 4 · Billetera | `wallet`, `deposit` | ✅ Lista |
+| 5a · Perfil | `updateUser`, `deleteUser` | ✅ Lista |
+| 5b · Crear ítem | `createItem` | 🔒 Bloqueada por [B2](#b2) |
+| 6 · MS reales | Clientes HTTP hacia los MS | ⏳ Pendiente |
 
 > El schema completo ya se sirve (sirve para explorar tipos), pero solo funcionan las operaciones de las etapas marcadas como listas. Las demás, si las llamas, devuelven `null` (las que pueden ser nulas, como `item` o `auction`) o responden `INTERNAL`.
 >
@@ -32,6 +33,8 @@ El Gateway se construye por etapas. Esta tabla dice qué funciona hoy.
 > | Usuario | Contraseña |
 > |---|---|
 > | `ana@correo.com` | `secreto123` |
+>
+> Billetera de Ana: `available` 380000 y `reserved` 120000, con una recarga de 500000 y una reserva de 120000 en la subasta del reloj. Cada usuario nuevo (`register`) empieza con la billetera vacía.
 >
 > | Ítem | id | Subasta |
 > |---|---|---|
@@ -58,7 +61,7 @@ Un bloqueo es una **decisión del contrato** que falta tomar en equipo. Mientras
 - **Quién decide:** Catalina (dueña del schema GraphQL) junto con Heider (MS). Afecta a la SPA: las consultas que pidan `bidder { email }` dejarán de ser válidas.
 
 <a id="b2"></a>
-### B2 · Fecha de cierre al crear un ítem (bloquea la etapa 5)
+### B2 · Fecha de cierre al crear un ítem (bloquea la etapa 5b)
 
 - **Qué pasa:** `createItem` crea el ítem en el MS catálogo y luego su subasta en el MS transaccional (`POST /auctions`), que exige `endsAt` (cuándo termina la subasta). Pero `CreateItemInput` en [schema.graphql](../docs/contrato/schema.graphql) no tiene ese campo.
 - **Por qué importa:** sin `endsAt`, el Gateway no puede crear la subasta, y un ítem sin subasta no se puede pujar.
@@ -153,33 +156,24 @@ Todos los errores llegan en `errors[].extensions.code` con **uno de estos 9 valo
 
 ## Cómo correrlo
 
-### En local (con datos falsos, sin los MS)
+### Con Docker Compose (la forma oficial)
+
+Desde la raíz del repositorio:
 
 ```bash
-cd gateway-bff
-npm install
 cp .env.example .env
 # Pon en .env un JWT_SECRET de al menos 32 caracteres, por ejemplo el que genera:
 openssl rand -hex 32
-npm run dev
+docker compose up --build gateway-bff
 ```
 
-`npm run dev` y `npm start` leen el archivo `.env` automáticamente. Con `USE_MOCKS=true` (el valor que trae `.env.example`) no hace falta levantar los MS.
+El Gateway queda en `http://localhost:4000/graphql`. Por ahora corre con `USE_MOCKS=true`, así que no necesita los MS; cuando se conecte a los MS reales (etapa 6), el servicio pasará a depender de ellos.
 
-El Gateway **no arranca**, y explica por qué, si:
+El Gateway **no arranca**, y explica por qué en `docker compose logs gateway-bff`, si:
 - falta `JWT_SECRET` o tiene menos de 32 caracteres;
-- `USE_MOCKS=false`, porque los clientes HTTP hacia los MS llegan en la etapa 6. Ojo: `false` es el valor por defecto si la variable no está definida.
+- `USE_MOCKS=false`, porque los clientes HTTP hacia los MS llegan en la etapa 6.
 
-### Con Docker
-
-```bash
-cd gateway-bff
-# El schema vive en docs/contrato/ de la raíz, por eso se pasa como contexto adicional.
-docker build --build-context contrato=../docs/contrato -t pujaz-gateway .
-docker run --rm -p 4000:4000 -e JWT_SECRET=$(openssl rand -hex 32) -e USE_MOCKS=true pujaz-gateway
-```
-
-El Gateway se agrega a `docker-compose.yml` en la etapa 6. Allí, el servicio necesita el mismo contexto adicional:
+El schema vive en `docs/contrato/` de la raíz, fuera de `gateway-bff/`. Por eso el servicio lo recibe como contexto adicional:
 
 ```yaml
 gateway-bff:
@@ -188,6 +182,19 @@ gateway-bff:
     additional_contexts:
       contrato: ./docs/contrato
 ```
+
+Para construir solo la imagen, sin Compose (desde la raíz): `docker build --build-context contrato=docs/contrato -t pujaz-gateway gateway-bff`.
+
+### Para desarrollar (sin Docker)
+
+```bash
+cd gateway-bff
+npm install
+cp .env.example .env   # y pon un JWT_SECRET
+npm run dev
+```
+
+`npm run dev` y `npm start` leen `gateway-bff/.env` automáticamente. Con `USE_MOCKS=true` (el valor que trae `.env.example`) no hace falta levantar los MS. Ojo: fuera de Docker, `false` es el valor por defecto si la variable no está definida.
 
 ### Variables de entorno
 
@@ -218,6 +225,6 @@ gateway-bff:
 - **Una sola copia del Gateway.** Los eventos en vivo (`auctionUpdated`) se publican en memoria. Con dos copias, un suscriptor no vería las pujas hechas en la otra.
 - **El contrato manda.** [schema.graphql](../docs/contrato/schema.graphql) (SPA ↔ Gateway) y [rest.md](../docs/contrato/rest.md) (Gateway ↔ MS) son la fuente de verdad. Para cambiarlos se abre un Pull Request propio que aprueban los dueños de ambos lados.
 - **Preguntas abiertas** ([rest.md §4](../docs/contrato/rest.md#4-preguntas-abiertas-para-el-equipo)):
-  - [B1](#b1) y [B2](#b2) bloquean las etapas 3 y 5 (ver [Bloqueos](#bloqueos)).
+  - [B1](#b1) y [B2](#b2) bloquean las etapas 3 y 5b (ver [Bloqueos](#bloqueos)).
   - Al cerrar una subasta, el dinero del ganador se queda en `reserved`: no hay un movimiento que lo cobre. Es una limitación conocida que queda fuera del prototipo, no un bloqueo.
 - **Flujo de Git:** la rama de integración del equipo es `developcito` en heider88/Pujaz. Las ramas de trabajo salen de `develop` del fork, vuelven ahí y de ahí se abre el PR a `upstream/developcito`.

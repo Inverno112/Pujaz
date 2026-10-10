@@ -29,4 +29,6 @@ export interface Auction {
 export interface AuctionClient {
   /** GET /auctions?itemIds= · los ítems sin subasta no aparecen; nunca 404 */
   getAuctionsByItemIds(itemIds: string[]): Promise<Auction[]>;
+  /** GET /auctions?ids= · los ids que no existen no aparecen; nunca 404 */
+  getAuctionsByIds(ids: string[]): Promise<Auction[]>;
 }
