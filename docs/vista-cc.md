@@ -30,14 +30,14 @@ graph TD
         Postgres[("PostgreSQL<br/>Subastas y usuarios; puerto 5432")]
     end
 
-    SPA -->|"HTTP: HTML, CSS, JS y GraphQL JSON /graphql"| Nginx
-    Nginx -->|"Proxy HTTP: GraphQL /graphql, puerto 4000"| Gateway
-    SPA -.->|"WS /graphql: graphql-transport-ws; pendiente extremo a extremo"| Nginx
-    Nginx -.->|"HTTP Upgrade a WebSocket; servidor pendiente"| Gateway
-    Gateway -.->|"HTTP / REST JSON; clientes pendientes; puerto 8000"| MS_Cat
-    Gateway -.->|"HTTP / REST JSON; clientes y servidor pendientes"| MS_Trans
-    MS_Cat -.->|"TCP / protocolo nativo MongoDB; puerto 27017"| Mongo
-    MS_Trans -.->|"TCP / protocolo nativo PostgreSQL; puerto 5432"| Postgres
+    SPA -->|"HTTP: estáticos y GraphQL en /graphql"| Nginx
+    Nginx -->|"HTTP: Proxy GraphQL a puerto 4000"| Gateway
+    SPA -.->|"WebSocket: subprotocolo graphql-transport-ws"| Nginx
+    Nginx -.->|"HTTP Upgrade / WebSocket"| Gateway
+    Gateway -.->|"HTTP: Peticiones REST a puerto 8000"| MS_Cat
+    Gateway -.->|"HTTP: Peticiones REST"| MS_Trans
+    MS_Cat -.->|"db_connector: puerto 27017"| Mongo
+    MS_Trans -.->|"db_connector: puerto 5432"| Postgres
 ```
 
 Las líneas continuas describen el flujo HTTP del prototipo de infraestructura del
