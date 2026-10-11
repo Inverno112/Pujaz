@@ -18,13 +18,11 @@ function readConfig(): Config {
 
 const config = readConfig();
 
-// Los clientes HTTP llegan en la etapa 6.
-if (!config.useMocks) {
-  fail('los clientes HTTP hacia los MS aún no existen (etapa 6). Arranca con USE_MOCKS=true.');
-}
-
 const { yoga } = buildGateway(config);
 
 createServer(yoga).listen(config.port, () => {
-  console.info(`[gateway] escuchando en http://localhost:${config.port}${yoga.graphqlEndpoint}`);
+  const clients = config.useMocks
+    ? 'clientes falsos (USE_MOCKS=true)'
+    : `MS transaccional ${config.msTransaccionalUrl} y MS catálogo ${config.msCatalogoUrl}`;
+  console.info(`[gateway] escuchando en http://localhost:${config.port}${yoga.graphqlEndpoint} con ${clients}`);
 });
