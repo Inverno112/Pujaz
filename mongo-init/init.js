@@ -1,18 +1,16 @@
 db = db.getSiblingDB('pujaz_catalogo');
 
-// Índice de texto para búsquedas eficientes
-db.items.createIndex({ titulo: "text", descripcion: "text", categoria: "text" });
+db.articulos.createIndex({ name: "text", description: "text", category: "text" });
 
-// 10 artículos semilla con la relación lógica subastaId definida en la arquitectura
-db.items.insertMany([
-  { _id: ObjectId("60d5ec49f1b2c3d4e5f60001"), titulo: "Reloj Vintage", categoria: "antigüedades", descripcion: "Reloj de bolsillo de 1920.", subastaId: 1 },
-  { _id: ObjectId("60d5ec49f1b2c3d4e5f60002"), titulo: "Pintura Abstracta", categoria: "arte", descripcion: "Óleo sobre lienzo original.", subastaId: 2 },
-  { _id: ObjectId("60d5ec49f1b2c3d4e5f60003"), titulo: "Moneda Romana", categoria: "coleccionables", descripcion: "Moneda de plata del imperio romano.", subastaId: 3 },
-  { _id: ObjectId("60d5ec49f1b2c3d4e5f60004"), titulo: "Ford Mustang 1969", categoria: "vehículos", descripcion: "Restaurado con piezas originales.", subastaId: 4 },
-  { _id: ObjectId("60d5ec49f1b2c3d4e5f60005"), titulo: "Collar de Perlas", categoria: "joyas", descripcion: "Perlas cultivadas con cierre de oro.", subastaId: 5 },
-  { _id: ObjectId("60d5ec49f1b2c3d4e5f60006"), titulo: "Cámara Leica", categoria: "coleccionables", descripcion: "Cámara fotográfica clásica de 35mm.", subastaId: 6 },
-  { _id: ObjectId("60d5ec49f1b2c3d4e5f60007"), titulo: "Escultura de Bronce", categoria: "arte", descripcion: "Escultura contemporánea firmada.", subastaId: 7 },
-  { _id: ObjectId("60d5ec49f1b2c3d4e5f60008"), titulo: "Anillo de Diamante", categoria: "joyas", descripcion: "Diamante corte brillante de 1 quilate.", subastaId: 8 },
-  { _id: ObjectId("60d5ec49f1b2c3d4e5f60009"), titulo: "Edición Primera Don Quijote", categoria: "antigüedades", descripcion: "Ejemplar en buen estado de conservación.", subastaId: 9 },
-  { _id: ObjectId("60d5ec49f1b2c3d4e5f60010"), titulo: "Porsche 911 Clásico", categoria: "vehículos", descripcion: "Motor original, pintura impecable.", subastaId: 10 }
+db.articulos.insertMany([
+  { _id: ObjectId("60d5ec49f1b2c3d4e5f60001"), name: "Reloj Vintage", category: "antigüedades", description: "Reloj de bolsillo de 1920.", images: [], documents: [], basePrice: 100000.00 },
+  { _id: ObjectId("60d5ec49f1b2c3d4e5f60002"), name: "Pintura Abstracta", category: "arte", description: "Óleo sobre lienzo original.", images: [], documents: [], basePrice: 250000.00 },
+  { _id: ObjectId("60d5ec49f1b2c3d4e5f60003"), name: "Moneda Romana", category: "coleccionables", description: "Moneda de plata del imperio romano.", images: [], documents: [], basePrice: 50000.00 },
+  { _id: ObjectId("60d5ec49f1b2c3d4e5f60004"), name: "Ford Mustang 1969", category: "vehículos", description: "Restaurado con piezas originales.", images: [], documents: [], basePrice: 800000.00 },
+  { _id: ObjectId("60d5ec49f1b2c3d4e5f60005"), name: "Collar de Perlas", category: "joyas", description: "Perlas cultivadas con cierre de oro.", images: [], documents: [], basePrice: 120000.00 },
+  { _id: ObjectId("60d5ec49f1b2c3d4e5f60006"), name: "Cámara Leica", category: "coleccionables", description: "Cámara fotográfica clásica de 35mm.", images: [], documents: [], basePrice: 300000.00 },
+  { _id: ObjectId("60d5ec49f1b2c3d4e5f60007"), name: "Escultura de Bronce", category: "arte", description: "Escultura contemporánea firmada.", images: [], documents: [], basePrice: 450000.00 },
+  { _id: ObjectId("60d5ec49f1b2c3d4e5f60008"), name: "Anillo de Diamante", category: "joyas", description: "Diamante corte brillante de 1 quilate.", images: [], documents: [], basePrice: 900000.00 },
+  { _id: ObjectId("60d5ec49f1b2c3d4e5f60009"), name: "Edición Primera Don Quijote", category: "antigüedades", description: "Ejemplar en buen estado de conservación.", images: [], documents: [], basePrice: 60000.00 },
+  { _id: ObjectId("60d5ec49f1b2c3d4e5f60010"), name: "Porsche 911 Clásico", category: "vehículos", description: "Motor original, pintura impecable.", images: [], documents: [], basePrice: 1000000.00 }
 ]);

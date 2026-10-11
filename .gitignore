@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Configuración local y secretos; conservar plantillas de ejemplo.
+.env
+.env.*
+!.env.example
+
+# macOS
+.DS_Store

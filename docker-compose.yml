@@ -1,38 +1,112 @@
-version: '3.8'
-
 services:
-  # 1. Base de datos para MS Transaccional
+  frontend-spa:
+    build:
+      context: ./frontend-spa
+    ports:
+      - "${NGINX_PORT:-8080}:80"
+    environment:
+      GATEWAY_PORT: ${PORT:-4000}
+      NGINX_ENVSUBST_FILTER: ^GATEWAY_PORT$
+    volumes:
+      - ./docker/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    networks: [public, backend]
+    depends_on:
+      gateway-bff:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway-bff:
+    build:
+      context: ./gateway-bff
+      additional_contexts:
+        contrato: ./docs/contrato
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT:-4000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET con al menos 32 caracteres}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      USE_MOCKS: "true"
+      MS_TRANSACCIONAL_URL: ${MS_TRANSACCIONAL_URL:-http://ms-transaccional:8080}
+      MS_CATALOGO_URL: ${MS_CATALOGO_URL:-http://ms-catalogo:8000}
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/graphql?query=%7B__typename%7D').then(async r => { const b = await r.json(); process.exit(r.ok && b.data?.__typename === 'Query' ? 0 : 1); }).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   postgres-db:
     image: postgres:15
     environment:
-      POSTGRES_USER: pujaz_user
-      POSTGRES_PASSWORD: pujaz_password
-      POSTGRES_DB: pujaz_transaccional
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-pujaz_transaccional}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
-  # 2. Base de datos para MS Catálogo
   mongo-db:
     image: mongo:6
-    ports:
-      - "27017:27017"
     volumes:
       - mongo_data:/data/db
+      - ./mongo-init/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks: [data]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "if (db.adminCommand({ping: 1}).ok !== 1) quit(1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
-  # 3. Microservicio de Catálogo (Python/FastAPI)
   ms-catalogo:
     build:
       context: ./ms-catalogo
-    ports:
-      - "8000:8000"
     environment:
-      - MONGO_URI=mongodb://mongo-db:27017
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo-db:27017}
+    networks: [backend, data]
     depends_on:
-      - mongo-db
+      mongo-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # (Próximamente: ms-transaccional, gateway-bff, frontend-spa)
+  ms-transaccional:
+    build:
+      context: ./ms-transaccional
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB:-pujaz_transaccional}?sslmode=disable
+      PORT: 8080
+    networks: [backend, data]
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  public:
+  backend:
+    internal: true
+  data:
+    internal: true
 
 volumes:
   postgres_data:

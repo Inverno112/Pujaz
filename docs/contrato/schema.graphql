@@ -1,0 +1,148 @@
+# Contrato de API · Pujaz · Parte GraphQL (SPA <-> Gateway)
+# Responsable: Catalina · La parte REST (Gateway <-> microservicios) está en rest.md (David)
+#
+# Autenticación: las operaciones marcadas con "Requiere JWT" esperan el encabezado
+#   Authorization: Bearer <token>
+# Si falta o es inválido, responden un error con extensions.code = "UNAUTHENTICATED".
+
+scalar DateTime
+
+# ---------- Tipos ----------
+
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  createdAt: DateTime!
+  # La contraseña nunca se expone
+}
+
+# Datos públicos de quien puja: solo id y nombre, nunca el correo.
+# Se usa en las pujas y en los participantes porque auctionUpdated es pública (no pide JWT).
+type Bidder {
+  id: ID!
+  name: String!
+}
+
+type AuthPayload {
+  token: String!   # JWT
+  user: User!
+}
+
+type Item {
+  id: ID!                # _id del documento en MongoDB
+  name: String!
+  description: String
+  category: String
+  images: [String!]!     # URLs
+  documents: [String!]!  # URLs de documentos asociados (certificados, fichas)
+  basePrice: Float!
+  auction: Auction       # Subasta de este ítem, para mostrar precio actual y estado en el listado
+}
+
+enum AuctionStatus {
+  OPEN
+  CLOSED
+}
+
+type Bid {
+  id: ID!
+  amount: Float!
+  bidder: Bidder!       # Solo id y nombre (sin correo)
+  createdAt: DateTime!
+}
+
+type Auction {
+  id: ID!
+  item: Item!            # Viene del MS Catálogo
+  currentPrice: Float!   # Puja más alta o precio base si no hay pujas
+  winningBid: Bid        # null si no hay pujas
+  participants: [Bidder!]! # Quienes han pujado (solo id y nombre)
+  endsAt: DateTime!
+  status: AuctionStatus!
+}
+
+type Wallet {
+  userId: ID!
+  available: Float!      # Saldo disponible para pujar
+  reserved: Float!       # Saldo comprometido en pujas que va ganando
+  movements: [WalletMovement!]!  # Historial, del más reciente al más antiguo
+}
+
+enum MovementType {
+  DEPOSIT   # Recarga
+  RESERVE   # Saldo reservado al pujar
+  REFUND    # Reintegro: alguien superó la puja y el saldo vuelve a estar disponible
+}
+
+type WalletMovement {
+  id: ID!
+  type: MovementType!
+  amount: Float!
+  auction: Auction       # Subasta relacionada (null en recargas)
+  createdAt: DateTime!
+}
+
+# ---------- Entradas ----------
+
+input RegisterInput {
+  name: String!
+  email: String!
+  password: String!
+}
+
+input UpdateUserInput {
+  name: String
+  email: String
+  password: String
+}
+
+input CreateItemInput {
+  name: String!
+  description: String
+  category: String
+  images: [String!]
+  documents: [String!]
+  basePrice: Float!
+  endsAt: DateTime       # Cierre de la subasta. Si no viene, el Gateway usa una duración por defecto
+}
+
+# ---------- Lectura ----------
+
+type Query {
+  items(search: String): [Item!]!          # Listado y búsqueda por nombre o descripción
+  item(id: ID!): Item                      # null si no existe
+  auction(itemId: ID!): Auction            # Estado de la subasta de un ítem
+  me: User                                 # Requiere JWT
+  wallet: Wallet!                          # Requiere JWT · billetera del usuario autenticado
+}
+
+# ---------- Escritura ----------
+
+type Mutation {
+  login(email: String!, password: String!): AuthPayload!   # Error: INVALID_CREDENTIALS
+  register(input: RegisterInput!): AuthPayload!            # Error: EMAIL_TAKEN, BAD_USER_INPUT
+  updateUser(input: UpdateUserInput!): User!               # Requiere JWT
+  deleteUser: Boolean!                                     # Requiere JWT
+
+  placeBid(auctionId: ID!, amount: Float!): Bid!           # Requiere JWT
+  # Errores: BID_TOO_LOW (no supera la puja actual), AUCTION_CLOSED,
+  #          INSUFFICIENT_FUNDS (saldo disponible insuficiente), NOT_FOUND
+
+  deposit(amount: Float!): Wallet!                         # Requiere JWT · Error: BAD_USER_INPUT si amount <= 0
+
+  createItem(input: CreateItemInput!): Item!               # Requiere JWT · Error: BAD_USER_INPUT
+}
+
+# ---------- Tiempo real (WebSocket, protocolo graphql-ws) ----------
+
+type Subscription {
+  auctionUpdated(auctionId: ID!): Auction!   # Abierta: no requiere JWT, cualquiera que vea la subasta la sigue en vivo
+  # Se emite cada vez que se acepta una puja en esa subasta,
+  # con el precio actual, la puja ganadora y los participantes.
+}
+
+# ---------- Formato de errores ----------
+# Todos los errores llegan en errors[].extensions.code con uno de estos valores:
+# UNAUTHENTICATED, INVALID_CREDENTIALS, EMAIL_TAKEN, BAD_USER_INPUT,
+# NOT_FOUND, BID_TOO_LOW, AUCTION_CLOSED, INSUFFICIENT_FUNDS, INTERNAL
