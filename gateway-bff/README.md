@@ -7,13 +7,13 @@ SPA  --GraphQL / WebSocket-->  Gateway  --REST-->  MS transaccional (PostgreSQL)
                                         --REST-->  MS catálogo (MongoDB)
 ```
 
-Este README es para **quien usa el Gateway** (la SPA, los MS o quien levanta el proyecto). Los contratos están en [docs/contrato/](../docs/contrato/).
+Este README es para **quien usa el Gateway** (la SPA, los MS o quien levanta el proyecto). Los contratos están en [docs/contrato/](../docs/contrato/). Para probarlo (pruebas automáticas, casos a mano y escenarios e2e), ver [PRUEBAS.md](PRUEBAS.md).
 
 ---
 
 ## Estado actual
 
-El Gateway se construye por etapas. Esta tabla dice qué funciona hoy con los **clientes falsos**.
+El Gateway se construye por etapas. Esta tabla dice qué funciona hoy con los **clientes falsos**. Con los MS reales (lo que levanta `docker-compose.yml`), ver [Con los MS reales](#con-los-ms-reales).
 
 | Etapa | Operaciones | Estado |
 |---|---|---|
@@ -24,11 +24,9 @@ El Gateway se construye por etapas. Esta tabla dice qué funciona hoy con los **
 | 4 · Billetera | `wallet`, `deposit` | ✅ Lista |
 | 5a · Perfil | `updateUser`, `deleteUser` | ✅ Lista |
 | 5b · Crear ítem | `createItem` | ✅ Lista |
-| 6 · MS reales | Clientes HTTP hacia los MS | 🟡 Listos; dependen de que los MS cumplan el contrato ([ver abajo](#con-los-ms-reales)) |
+| 6 · MS reales | Clientes HTTP hacia los MS | ✅ Conectado por defecto en `docker-compose.yml`. Pendientes del MS: `createItem` y `WalletMovement.auction` ([ver abajo](#con-los-ms-reales)) |
 
-> El schema completo ya se sirve (sirve para explorar tipos), pero solo funcionan las operaciones de las etapas marcadas como listas. Las demás, si las llamas, devuelven `null` (las que pueden ser nulas, como `item` o `auction`) o responden `INTERNAL`.
->
-> Con **clientes falsos** (`USE_MOCKS=true`, el valor del `docker-compose.yml`), el Gateway usa datos en memoria que imitan a los MS y que se reinician cada vez que arranca. Datos de prueba:
+> Con **clientes falsos** (`USE_MOCKS=true`, solo para desarrollar el Gateway aislado), el Gateway usa datos en memoria que imitan a los MS y que se reinician cada vez que arranca. Datos de prueba:
 >
 > | Usuario | Contraseña |
 > |---|---|
@@ -56,19 +54,21 @@ Con `USE_MOCKS=false`, el Gateway llama a los MS (`MS_TRANSACCIONAL_URL` y `MS_C
 - `createItem` envía `description` tal cual. El schema la deja opcional, pero el MS catálogo la exige: sin descripción, el MS responde `BAD_USER_INPUT`.
 - Si un MS no responde en 5 segundos o está caído, la SPA recibe `INTERNAL`.
 
-### Qué funciona hoy (10 de octubre)
+### Qué funciona hoy (11 de octubre)
 
 | Operación | Con los MS reales | Qué falta y de quién depende |
 |---|---|---|
 | `items`, `item`, `auction`, `Item.auction`, `Auction.item` | ✅ | — |
 | `placeBid`, `auctionUpdated` | ✅ | La puja reserva y reintegra saldo en el MS; el evento llega a quienes siguen esa subasta |
-| `wallet`, `deposit`, `WalletMovement.auction` | ✅ | Las reservas llegan con `auctionId: null`, así que su `auction` sale `null` (Heider) |
-| `deleteUser` | ✅ | — |
-| `register`, `login`, `me`, `updateUser` | ❌ `INTERNAL` | El usuario del MS transaccional no trae `createdAt` (Heider) |
-| `login` con los usuarios de la semilla | ❌ `INVALID_CREDENTIALS` | Sus contraseñas en la semilla no son hashes bcrypt válidos (Frank / Heider) |
-| `createItem` | ❌ `INTERNAL`, sin llamar a ningún MS | No existe `POST /auctions` (Heider). El Gateway no crea el ítem para no dejarlo sin subasta en el catálogo |
+| `wallet`, `deposit` | ✅ | Recarga, reserva al pujar y reintegro al ser superado, con sus movimientos |
+| `WalletMovement.auction` | 🟡 Sale `null` | `wallet_movements` no tiene `auction_id`, así que las reservas llegan con `auctionId: null` (Heider) |
+| `register`, `login`, `me`, `updateUser`, `deleteUser` | ✅ | — |
+| `login` con los usuarios de la semilla | ❌ `INVALID_CREDENTIALS` | Sus contraseñas en la semilla no son hashes bcrypt válidos: `000004_expand_seeds` solo corrige hashes vacíos y la semilla trae `hash_password123` (Frank / Heider). Mientras tanto, se crea un usuario con `register` |
+| `createItem` | ❌ `INTERNAL`, sin llamar a ningún MS | No existe `POST /auctions` (Heider). El Gateway no crea el ítem para no dejarlo sin subasta en el catálogo. Cuando exista, se descomenta la llamada en `infrastructure/clients/http/auction.http.ts` |
 
-Para probar con los MS reales, en `docker-compose.yml` (o en un `docker-compose.override.yml` local) se pone `USE_MOCKS: "false"` en el servicio `gateway-bff`.
+Verificado el 11 de octubre con `docker compose up --build` y volúmenes nuevos, a través de Nginx (`http://localhost:8080/graphql`): 32 de 33 casos pasan (catálogo, registro, login, perfil, billetera, pujas con sus errores, reintegro y `auctionUpdated` con dos usuarios). El que falla es `WalletMovement.auction`.
+
+`docker-compose.yml` usa los MS reales (`USE_MOCKS=false`). Para volver a los clientes falsos, se pone `USE_MOCKS=true` en `.env`.
 
 ---
 
@@ -171,10 +171,10 @@ Desde la raíz del repositorio:
 cp .env.example .env
 # Pon en .env un JWT_SECRET de al menos 32 caracteres, por ejemplo el que genera:
 openssl rand -hex 32
-docker compose up --build gateway-bff
+docker compose up --build
 ```
 
-El Gateway queda en `http://localhost:4000/graphql`. El `docker-compose.yml` lo deja con `USE_MOCKS=true`, así que no necesita los MS. Para usar los MS reales, ver [Con los MS reales](#con-los-ms-reales).
+La SPA queda en `http://localhost:8080` y el Gateway responde en `http://localhost:8080/graphql` a través de Nginx. El `docker-compose.yml` lo deja con `USE_MOCKS=false`: arranca después de que los dos MS estén sanos y usa sus bases de datos. Para levantar solo el Gateway con clientes falsos: `USE_MOCKS=true docker compose up --build gateway-bff --no-deps`.
 
 El Gateway **no arranca**, y explica por qué en `docker compose logs gateway-bff`, si:
 - falta `JWT_SECRET` o tiene menos de 32 caracteres;
