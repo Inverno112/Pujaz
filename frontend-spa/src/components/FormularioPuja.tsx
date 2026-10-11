@@ -90,7 +90,11 @@ export function FormularioPuja({ subasta }: { subasta: AuctionDetail }) {
             key={incremento}
             type="button"
             className="boton-secundario"
-            onClick={() => setMonto(String(subasta.currentPrice + incremento))}
+            onClick={() => {
+              const actual = Number(monto)
+              const base = actual && actual >= subasta.currentPrice ? actual : subasta.currentPrice
+              setMonto(String(base + incremento))
+            }}
           >
             + {formatearPrecio(incremento)}
           </button>
