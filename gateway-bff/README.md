@@ -20,7 +20,7 @@ El Gateway se construye por etapas. Esta tabla dice qué funciona hoy con los **
 | 0 · Base | Servidor, schema, errores, Docker | ✅ Lista |
 | 1 · Autenticación | `register`, `login`, `me` | ✅ Lista |
 | 2 · Lecturas | `items`, `item`, `auction`, `Item.auction` | ✅ Lista |
-| 3 · Pujas y tiempo real | `placeBid`, `auctionUpdated` | ⏳ Pendiente (ya no está bloqueada) |
+| 3 · Pujas y tiempo real | `placeBid`, `auctionUpdated` | ✅ Lista |
 | 4 · Billetera | `wallet`, `deposit` | ✅ Lista |
 | 5a · Perfil | `updateUser`, `deleteUser` | ✅ Lista |
 | 5b · Crear ítem | `createItem` | ✅ Lista |
@@ -34,7 +34,7 @@ El Gateway se construye por etapas. Esta tabla dice qué funciona hoy con los **
 > |---|---|
 > | `ana@correo.com` | `secreto123` |
 >
-> Billetera de Ana: `available` 380000 y `reserved` 120000, con una recarga de 500000 y una reserva de 120000 en la subasta del reloj. Cada usuario nuevo (`register`) empieza con la billetera vacía.
+> Billetera de Ana: `available` 380000 y `reserved` 120000, con una recarga de 500000 y una reserva de 120000 en la subasta del reloj. Cada usuario nuevo (`register`) empieza con la billetera vacía. Las pujas mueven la billetera como el MS: reservan el monto a quien puja y le devuelven el suyo a quien iba ganando.
 >
 > | Ítem | id | Subasta |
 > |---|---|---|
@@ -61,6 +61,7 @@ Con `USE_MOCKS=false`, el Gateway llama a los MS (`MS_TRANSACCIONAL_URL` y `MS_C
 | Operación | Con los MS reales | Qué falta y de quién depende |
 |---|---|---|
 | `items`, `item`, `auction`, `Item.auction`, `Auction.item` | ✅ | — |
+| `placeBid`, `auctionUpdated` | ✅ | La puja reserva y reintegra saldo en el MS; el evento llega a quienes siguen esa subasta |
 | `wallet`, `deposit`, `WalletMovement.auction` | ✅ | Las reservas llegan con `auctionId: null`, así que su `auction` sale `null` (Heider) |
 | `deleteUser` | ✅ | — |
 | `register`, `login`, `me`, `updateUser` | ❌ `INTERNAL` | El usuario del MS transaccional no trae `createdAt` (Heider) |
@@ -89,7 +90,7 @@ Si aparece otro bloqueo, se resuelve igual: el equipo acuerda la solución, se c
 | Qué | Dirección |
 |---|---|
 | Consultas y mutaciones | `POST http://localhost:4000/graphql` |
-| Suscripciones (desde la etapa 3) | `ws://localhost:4000/graphql`, protocolo `graphql-ws` |
+| Suscripciones | `ws://localhost:4000/graphql` (o `ws://localhost:8080/graphql` a través de Nginx), protocolo `graphql-ws`, sin token |
 | Tipos y operaciones | [schema.graphql](../docs/contrato/schema.graphql) (el contrato) |
 
 CORS: por defecto se acepta el origen `http://localhost:5173` (Vite). Si la SPA corre en otro origen, se cambia con `CORS_ORIGIN`.
