@@ -45,7 +45,7 @@ func TestWalletEndpoints(t *testing.T) {
 	})
 
 	t.Run("Recarga Válida", func(t *testing.T) {
-		req := models.DepositRequest{Amount: 50000.0}
+		req := models.DepositRequest{Amount: 50000.0, PromoCode: "PROMO2026"}
 		b, _ := json.Marshal(req)
 		res, err := http.Post(server.URL+"/users/1/wallet/deposits", "application/json", bytes.NewReader(b))
 		if err != nil {

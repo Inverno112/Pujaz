@@ -10,7 +10,7 @@ export class HttpWalletClient implements WalletClient {
     return this.http.get(`/users/${encodeURIComponent(userId)}/wallet`, parseWallet);
   }
 
-  deposit(userId: string, amount: number): Promise<Wallet> {
-    return this.http.post(`/users/${encodeURIComponent(userId)}/wallet/deposits`, { amount }, parseWallet);
+  deposit(userId: string, amount: number, promoCode: string): Promise<Wallet> {
+    return this.http.post(`/users/${encodeURIComponent(userId)}/wallet/deposits`, { amount, promoCode }, parseWallet);
   }
 }

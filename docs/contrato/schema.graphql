@@ -129,7 +129,7 @@ type Mutation {
   # Errores: BID_TOO_LOW (no supera la puja actual), AUCTION_CLOSED,
   #          INSUFFICIENT_FUNDS (saldo disponible insuficiente), NOT_FOUND
 
-  deposit(amount: Float!): Wallet!                         # Requiere JWT · Error: BAD_USER_INPUT si amount <= 0
+  deposit(amount: Float!, promoCode: String!): Wallet!                         # Requiere JWT · Error: BAD_USER_INPUT si amount <= 0 o promoCode es inválido
 
   createItem(input: CreateItemInput!): Item!               # Requiere JWT · Error: BAD_USER_INPUT
 }

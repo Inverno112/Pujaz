@@ -68,6 +68,11 @@ func (c *WalletController) Deposit(w http.ResponseWriter, r *http.Request, userI
 		return
 	}
 
+	if req.PromoCode != "PROMO2026" {
+		writeError(w, http.StatusBadRequest, "BAD_USER_INPUT", "Código promocional inválido")
+		return
+	}
+
 	wallet, err := c.service.Deposit(r.Context(), userID, req.Amount)
 	if err != nil {
 		if err == services.ErrNotFound {

@@ -13,7 +13,7 @@ const INCREMENTOS = [5000, 10000, 20000]
 function mensajeDeError(error: unknown) {
   switch (codigoError(error)) {
     case 'BID_TOO_LOW':
-      return 'Tu oferta debe superar el precio actual.'
+      return 'Tu oferta debe superar el precio actual por al menos 100 COP.'
     case 'INSUFFICIENT_FUNDS':
       return (
         <>
@@ -105,10 +105,10 @@ export function FormularioPuja({ subasta }: { subasta: AuctionDetail }) {
         id="monto-puja"
         type="number"
         inputMode="numeric"
-        min={1}
+        min={subasta.currentPrice + 100}
         step="any"
         required
-        placeholder={`Más de ${formatearPrecio(subasta.currentPrice)}`}
+        placeholder={`Mínimo ${formatearPrecio(subasta.currentPrice + 100)}`}
         value={monto}
         onChange={(evento) => setMonto(evento.target.value)}
       />

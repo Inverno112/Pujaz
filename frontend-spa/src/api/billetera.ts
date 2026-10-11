@@ -41,9 +41,9 @@ export const WALLET: TypedDocumentNode<{ wallet: Billetera }, Record<string, nev
   }
 `
 
-export const DEPOSIT: TypedDocumentNode<{ deposit: Billetera }, { amount: number }> = gql`
-  mutation Deposit($amount: Float!) {
-    deposit(amount: $amount) {
+export const DEPOSIT: TypedDocumentNode<{ deposit: Billetera }, { amount: number; promoCode: string }> = gql`
+  mutation Deposit($amount: Float!, $promoCode: String!) {
+    deposit(amount: $amount, promoCode: $promoCode) {
       userId
       available
       reserved
