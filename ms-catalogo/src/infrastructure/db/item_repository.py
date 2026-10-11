@@ -4,10 +4,18 @@ from src.infrastructure.db.mongo import items_collection
 from src.models.item import ItemCreate
 
 class ItemRepository:
-    def get_all(self, search: Optional[str] = None) -> List[dict]:
+    def get_all(self, search: Optional[str] = None, ids: Optional[List[str]] = None) -> List[dict]:
         query = {}
-        if search:
-            # Búsqueda insensible a mayúsculas/minúsculas en nombre o descripción
+        if ids:
+            object_ids = []
+            for id_str in ids:
+                try:
+                    object_ids.append(ObjectId(id_str.strip()))
+                except Exception:
+                    pass
+            if object_ids:
+                query["_id"] = {"$in": object_ids}
+        elif search:
             query = {
                 "$or": [
                     {"name": {"$regex": search, "$options": "i"}},

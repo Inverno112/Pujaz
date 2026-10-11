@@ -155,3 +155,31 @@ func (s *AuctionService) PlaceBid(ctx context.Context, auctionIDStr string, user
 		Auction: *updatedAuction,
 	}, nil
 }
+
+func (s *AuctionService) GetAuctionsByItemIDs(ctx context.Context, itemIDs []string) ([]models.Auction, error) {
+	auctions, err := s.repo.GetAuctionsByItemIDs(ctx, itemIDs)
+	if err != nil {
+		return nil, err
+	}
+	for i := range auctions {
+		s.updateStatus(&auctions[i])
+	}
+	return auctions, nil
+}
+
+func (s *AuctionService) GetAuctionsByIDs(ctx context.Context, idsStr []string) ([]models.Auction, error) {
+	var ids []int
+	for _, idStr := range idsStr {
+		if id, err := strconv.Atoi(idStr); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	auctions, err := s.repo.GetAuctionsByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range auctions {
+		s.updateStatus(&auctions[i])
+	}
+	return auctions, nil
+}

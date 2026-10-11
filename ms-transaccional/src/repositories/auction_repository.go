@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"github.com/lib/pq"
 	"database/sql"
 	"errors"
 	"ms-transaccional/src/models"
@@ -164,4 +165,59 @@ func (r *AuctionRepository) UpdateWalletBalances(ctx context.Context, tx *sql.Tx
 func (r *AuctionRepository) AddWalletMovement(ctx context.Context, tx *sql.Tx, walletID int, amount float64, movType string) error {
 	_, err := tx.ExecContext(ctx, "INSERT INTO wallet_movements (wallet_id, amount, type) VALUES ($1, $2, $3)", walletID, amount, movType)
 	return err
+}
+
+func (r *AuctionRepository) GetAuctionsByItemIDs(ctx context.Context, itemIDs []string) ([]models.Auction, error) {
+	if len(itemIDs) == 0 {
+		return []models.Auction{}, nil
+	}
+	
+	query := `SELECT id FROM auctions WHERE item_id = ANY($1)`
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(itemIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var auctions []models.Auction
+	for rows.Next() {
+		var aID int
+		if err := rows.Scan(&aID); err == nil {
+			a, err2 := r.getAuction(ctx, r.db, aID)
+			if err2 == nil && a != nil {
+				auctions = append(auctions, *a)
+			}
+		}
+	}
+	return auctions, nil
+}
+
+func (r *AuctionRepository) GetAuctionsByIDs(ctx context.Context, ids []int) ([]models.Auction, error) {
+	if len(ids) == 0 {
+		return []models.Auction{}, nil
+	}
+	
+	var ids64 []int64
+	for _, id := range ids {
+		ids64 = append(ids64, int64(id))
+	}
+
+	query := `SELECT id FROM auctions WHERE id = ANY($1)`
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(ids64))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var auctions []models.Auction
+	for rows.Next() {
+		var aID int
+		if err := rows.Scan(&aID); err == nil {
+			a, err2 := r.getAuction(ctx, r.db, aID)
+			if err2 == nil && a != nil {
+				auctions = append(auctions, *a)
+			}
+		}
+	}
+	return auctions, nil
 }

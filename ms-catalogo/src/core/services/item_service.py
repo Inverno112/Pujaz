@@ -9,12 +9,16 @@ class ItemService:
     def _map_to_response(self, doc: dict) -> ItemResponse:
         return ItemResponse(
             id=str(doc["_id"]),
-            name=doc["name"],
-            description=doc.get("description", "")
+            name=doc.get("name", ""),
+            description=doc.get("description", ""),
+            category=doc.get("category"),
+            images=doc.get("images", []),
+            documents=doc.get("documents", []),
+            basePrice=doc.get("basePrice", 0.0)
         )
 
-    def get_items(self, search: Optional[str] = None) -> List[ItemResponse]:
-        docs = self.repository.get_all(search)
+    def get_items(self, search: Optional[str] = None, ids: Optional[List[str]] = None) -> List[ItemResponse]:
+        docs = self.repository.get_all(search, ids)
         return [self._map_to_response(doc) for doc in docs]
 
     def get_item_by_id(self, item_id: str) -> Optional[ItemResponse]:

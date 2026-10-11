@@ -9,8 +9,9 @@ def get_item_service():
     return ItemService()
 
 @router.get("", response_model=List[ItemResponse])
-def get_items(search: Optional[str] = None, service: ItemService = Depends(get_item_service)):
-    return service.get_items(search)
+def get_items(search: Optional[str] = None, ids: Optional[str] = None, service: ItemService = Depends(get_item_service)):
+    ids_list = ids.split(",") if ids else None
+    return service.get_items(search, ids_list)
 
 @router.get("/{item_id}", response_model=ItemResponse)
 def get_item(item_id: str, service: ItemService = Depends(get_item_service)):

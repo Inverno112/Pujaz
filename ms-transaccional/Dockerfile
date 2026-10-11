@@ -10,5 +10,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /ms-transaccional main.go
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /ms-transaccional .
+COPY migrations/ ./migrations/
 
 CMD ["./ms-transaccional"]

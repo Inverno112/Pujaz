@@ -88,3 +88,30 @@ func (c *AuctionController) PlaceBid(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(resp)
 }
+
+func (c *AuctionController) ListAuctions(w http.ResponseWriter, r *http.Request) {
+	itemIdsStr := r.URL.Query().Get("itemIds")
+	idsStr := r.URL.Query().Get("ids")
+
+	var auctions []models.Auction
+	var err error
+
+	if itemIdsStr != "" {
+		itemIds := strings.Split(itemIdsStr, ",")
+		auctions, err = c.service.GetAuctionsByItemIDs(r.Context(), itemIds)
+	} else if idsStr != "" {
+		ids := strings.Split(idsStr, ",")
+		auctions, err = c.service.GetAuctionsByIDs(r.Context(), ids)
+	} else {
+		auctions = []models.Auction{}
+	}
+
+	if err != nil {
+		fmt.Println("500 ERROR:", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(auctions)
+}
