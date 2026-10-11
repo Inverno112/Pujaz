@@ -1,9 +1,9 @@
-import type { GatewayContext } from '../../core/context.js';
+import { requireUser, type GatewayContext } from '../../core/context.js';
 import { AppError } from '../../core/errors.js';
 import type { Item } from '../catalog/index.js';
 import type { WalletMovement } from '../wallet/index.js';
 import type { Auction } from './auction.client.js';
-import type { AuctionLoaders, AuctionsService } from './auctions.service.js';
+import type { AuctionLoaders, AuctionsService, CreateItemInput } from './auctions.service.js';
 
 export function createAuctionsResolvers(auctionsService: AuctionsService) {
   // El contexto es un objeto nuevo en cada petición: así los cargadores no se comparten entre peticiones.
@@ -22,6 +22,15 @@ export function createAuctionsResolvers(auctionsService: AuctionsService) {
     Query: {
       auction: (_parent: unknown, args: { itemId: string }, ctx: GatewayContext) =>
         loaders(ctx).auctionByItemId.load(args.itemId),
+    },
+    Mutation: {
+      createItem: async (_parent: unknown, args: { input: CreateItemInput }, ctx: GatewayContext) => {
+        requireUser(ctx);
+        const { item, auction } = await auctionsService.createItem(args.input);
+        // Item.auction ya tiene la subasta recién creada: no hace falta pedirla otra vez.
+        loaders(ctx).auctionByItemId.prime(item.id, auction);
+        return item;
+      },
     },
     Item: {
       auction: (item: Item, _args: unknown, ctx: GatewayContext) => loaders(ctx).auctionByItemId.load(item.id),

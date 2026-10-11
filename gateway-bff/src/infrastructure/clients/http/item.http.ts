@@ -1,4 +1,5 @@
-import type { Item, ItemClient } from '../../../modules/catalog/index.js';
+import type { Item, ItemClient, NewItem } from '../../../modules/catalog/index.js';
+import { MISSING_CREATE_AUCTION, createNotAvailable } from './not-available.js';
 import { parseItem, parseList, parseListOf } from '../../http/contract.js';
 import type { HttpClient } from '../../http/http-client.js';
 
@@ -21,5 +22,12 @@ export class HttpItemClient implements ItemClient {
       `/items?ids=${ids.map(encodeURIComponent).join(',')}`,
       parseListOf(parseItem, (item) => item.id, ids),
     );
+  }
+
+  // Pendiente: se habilita junto con POST /auctions del MS transaccional. Crear el ítem sin poder
+  // crear su subasta lo dejaría huérfano en el catálogo. Cuando exista:
+  // return this.http.post('/items', input, parseItem);
+  async createItem(_input: NewItem): Promise<Item> {
+    throw createNotAvailable('MS catálogo POST /items', MISSING_CREATE_AUCTION);
   }
 }

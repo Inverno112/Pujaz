@@ -47,7 +47,12 @@ export function buildGateway(config: Config, clients: Clients = createClients(co
         ...auctionsResolvers.Query,
         ...walletResolvers.Query,
       },
-      Mutation: { ...authResolvers.Mutation, ...usersResolvers.Mutation, ...walletResolvers.Mutation },
+      Mutation: {
+        ...authResolvers.Mutation,
+        ...usersResolvers.Mutation,
+        ...walletResolvers.Mutation,
+        ...auctionsResolvers.Mutation,
+      },
       Item: { ...auctionsResolvers.Item },
       Auction: { ...auctionsResolvers.Auction },
       WalletMovement: { ...auctionsResolvers.WalletMovement },

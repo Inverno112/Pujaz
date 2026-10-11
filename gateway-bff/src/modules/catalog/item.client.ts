@@ -10,6 +10,16 @@ export interface Item {
   basePrice: number;
 }
 
+// Cuerpo de POST /items (rest.md §2).
+export interface NewItem {
+  name: string;
+  description?: string;
+  category?: string;
+  images?: string[];
+  documents?: string[];
+  basePrice: number;
+}
+
 export interface ItemClient {
   /** GET /items?search= · busca en nombre y descripción, sin distinguir mayúsculas */
   searchItems(search?: string): Promise<Item[]>;
@@ -17,4 +27,6 @@ export interface ItemClient {
   getItem(itemId: string): Promise<Item>;
   /** GET /items?ids= · los ids que no existen no aparecen */
   getItemsByIds(ids: string[]): Promise<Item[]>;
+  /** POST /items · Errores: BAD_USER_INPUT (name vacío, basePrice <= 0) */
+  createItem(input: NewItem): Promise<Item>;
 }

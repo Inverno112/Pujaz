@@ -1,4 +1,5 @@
-import type { Auction, AuctionClient, Bid, UserSummary } from '../../../modules/auctions/index.js';
+import { AppError } from '../../../core/errors.js';
+import type { Auction, AuctionClient, Bid, NewAuction, UserSummary } from '../../../modules/auctions/index.js';
 import { MOCK_ITEM_IDS } from './item.mock.js';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -39,6 +40,7 @@ function seedAuctions(now: number): StoredAuction[] {
 
 export class MockAuctionClient implements AuctionClient {
   private readonly auctions: StoredAuction[] = seedAuctions(Date.now());
+  private nextId = 100;
 
   async getAuctionsByItemIds(itemIds: string[]): Promise<Auction[]> {
     return this.auctions.filter((auction) => itemIds.includes(auction.itemId)).map(toAuction);
@@ -46,6 +48,29 @@ export class MockAuctionClient implements AuctionClient {
 
   async getAuctionsByIds(ids: string[]): Promise<Auction[]> {
     return this.auctions.filter((auction) => ids.includes(auction.id)).map(toAuction);
+  }
+
+  // Mismas reglas que el MS (rest.md §1.3).
+  async createAuction(input: NewAuction): Promise<Auction> {
+    const endsAt = new Date(input.endsAt);
+    if (Number.isNaN(endsAt.getTime()) || endsAt.getTime() <= Date.now()) {
+      throw new AppError('BAD_USER_INPUT', 'La fecha de cierre debe estar en el futuro.');
+    }
+    if (!(input.basePrice > 0)) {
+      throw new AppError('BAD_USER_INPUT', 'El precio base debe ser mayor que cero.');
+    }
+    if (this.auctions.some((auction) => auction.itemId === input.itemId)) {
+      throw new AppError('BAD_USER_INPUT', 'Ese ítem ya tiene una subasta.');
+    }
+    const stored: StoredAuction = {
+      id: String(this.nextId++),
+      itemId: input.itemId,
+      basePrice: input.basePrice,
+      bids: [],
+      endsAt,
+    };
+    this.auctions.push(stored);
+    return toAuction(stored);
   }
 }
 
