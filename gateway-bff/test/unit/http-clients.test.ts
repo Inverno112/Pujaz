@@ -126,6 +126,19 @@ describe('HttpAuctionClient', () => {
   });
 });
 
+describe('crear ítems con los MS reales (POST /auctions no existe)', () => {
+  it('createItem y createAuction responden INTERNAL sin llamar a los MS', async () => {
+    await expect(new HttpItemClient(http()).createItem({ name: 'Radio', basePrice: 1000 })).rejects.toMatchObject({
+      code: 'INTERNAL',
+    });
+    await expect(
+      new HttpAuctionClient(http()).createAuction({ itemId: 'x', basePrice: 1000, endsAt: '2099-01-01T00:00:00Z' }),
+    ).rejects.toMatchObject({ code: 'INTERNAL' });
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('POST /auctions no existe'));
+  });
+});
+
 describe('HttpItemClient', () => {
   it('un ítem sin basePrice, category, images ni documents no cumple el contrato: INTERNAL', async () => {
     willRespond(200, [MS_ITEM]);
