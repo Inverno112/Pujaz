@@ -26,9 +26,26 @@ export interface Auction {
   status: AuctionStatus;
 }
 
+// Cuerpo de POST /auctions (rest.md §1.3).
+export interface NewAuction {
+  itemId: string;
+  basePrice: number;
+  endsAt: string;
+}
+
+// Respuesta de POST /auctions/{auctionId}/bids (rest.md §1.3).
+export interface PlacedBid {
+  bid: Bid;
+  auction: Auction;
+}
+
 export interface AuctionClient {
   /** GET /auctions?itemIds= · los ítems sin subasta no aparecen; nunca 404 */
   getAuctionsByItemIds(itemIds: string[]): Promise<Auction[]>;
   /** GET /auctions?ids= · los ids que no existen no aparecen; nunca 404 */
   getAuctionsByIds(ids: string[]): Promise<Auction[]>;
+  /** POST /auctions · Errores: BAD_USER_INPUT (endsAt en el pasado, basePrice <= 0 o ya existe para ese ítem) */
+  createAuction(input: NewAuction): Promise<Auction>;
+  /** POST /auctions/{auctionId}/bids · Errores: NOT_FOUND, AUCTION_CLOSED, BID_TOO_LOW, INSUFFICIENT_FUNDS */
+  placeBid(auctionId: string, userId: string, amount: number): Promise<PlacedBid>;
 }

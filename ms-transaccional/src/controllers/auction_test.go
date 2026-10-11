@@ -19,7 +19,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const pgConnStr = "postgres://pujaz_user:pujaz_password@localhost:5432/pujaz_transaccional?sslmode=disable"
+const pgConnStr = "postgres://pujaz_user:pujaz_password@localhost:55432/pujaz_transaccional?sslmode=disable"
 
 func setupTestDB(t *testing.T) *sql.DB {
 	db, err := sql.Open("postgres", pgConnStr)
@@ -41,6 +41,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 	_, _ = db.Exec("INSERT INTO auctions (id, item_id, current_price, ends_at) VALUES (1, 'item1', 100000.00, $1)", time.Now().Add(24*time.Hour).UTC())
 	// Auction 2: Closed
 	_, _ = db.Exec("INSERT INTO auctions (id, item_id, current_price, ends_at) VALUES (2, 'item2', 100000.00, $1)", time.Now().Add(-24*time.Hour).UTC())
+	_, _ = db.Exec("SELECT setval('auctions_id_seq', (SELECT MAX(id) FROM auctions))")
 	
 	return db
 }
@@ -193,6 +194,76 @@ func TestAuctionEndpoints(t *testing.T) {
 		}
 		if res.StatusCode != http.StatusUnprocessableEntity {
 			t.Errorf("Expected 422, got %d", res.StatusCode)
+		}
+	})
+}
+
+func TestAuctionEndpoints_Create(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	repo := repositories.NewAuctionRepository(db)
+	service := services.NewAuctionService(repo)
+	controller := controllers.NewAuctionController(service)
+
+	mux := http.NewServeMux()
+	routes.SetupAuctionRoutes(mux, controller)
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	t.Run("Create_Valid", func(t *testing.T) {
+		reqBody, _ := json.Marshal(map[string]interface{}{
+			"itemId":    "new_item_123",
+			"basePrice": 50000.0,
+			"endsAt":    time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339),
+		})
+		req, _ := http.NewRequest(http.MethodPost, server.URL+"/auctions", bytes.NewBuffer(reqBody))
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusCreated {
+			var respBody map[string]interface{}
+			json.NewDecoder(resp.Body).Decode(&respBody)
+			t.Errorf("Expected status 201, got %d, body: %v", resp.StatusCode, respBody)
+		}
+	})
+
+	t.Run("Create_Duplicate_Item", func(t *testing.T) {
+		reqBody, _ := json.Marshal(map[string]interface{}{
+			"itemId":    "item1", // item1 ya existe en setupTestDB
+			"basePrice": 50000.0,
+			"endsAt":    time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339),
+		})
+		req, _ := http.NewRequest(http.MethodPost, server.URL+"/auctions", bytes.NewBuffer(reqBody))
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("Expected status 400 for duplicate, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("Create_Past_Date", func(t *testing.T) {
+		reqBody, _ := json.Marshal(map[string]interface{}{
+			"itemId":    "new_item_456",
+			"basePrice": 50000.0,
+			"endsAt":    time.Now().Add(-24 * time.Hour).UTC().Format(time.RFC3339),
+		})
+		req, _ := http.NewRequest(http.MethodPost, server.URL+"/auctions", bytes.NewBuffer(reqBody))
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("Expected status 400 for past date, got %d", resp.StatusCode)
 		}
 	})
 }

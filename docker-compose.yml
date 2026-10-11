@@ -30,10 +30,15 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET con al menos 32 caracteres}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
-      USE_MOCKS: "true"
+      USE_MOCKS: ${USE_MOCKS:-false}
       MS_TRANSACCIONAL_URL: ${MS_TRANSACCIONAL_URL:-http://ms-transaccional:8080}
       MS_CATALOGO_URL: ${MS_CATALOGO_URL:-http://ms-catalogo:8000}
     networks: [backend]
+    depends_on:
+      ms-transaccional:
+        condition: service_healthy
+      ms-catalogo:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/graphql?query=%7B__typename%7D').then(async r => { const b = await r.json(); process.exit(r.ok && b.data?.__typename === 'Query' ? 0 : 1); }).catch(() => process.exit(1))"]
       interval: 10s

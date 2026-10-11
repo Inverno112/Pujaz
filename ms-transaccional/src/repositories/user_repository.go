@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"ms-transaccional/src/models"
 	"strconv"
+	"time"
 )
 
 type UserRepository struct {
@@ -23,7 +24,8 @@ func (r *UserRepository) CreateUserWithWallet(ctx context.Context, name, email, 
 	defer tx.Rollback()
 
 	var id int
-	err = tx.QueryRowContext(ctx, "INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id", name, email, passwordHash).Scan(&id)
+	var createdAt time.Time
+	err = tx.QueryRowContext(ctx, "INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, created_at", name, email, passwordHash).Scan(&id, &createdAt)
 	if err != nil {
 		return nil, err
 	}
@@ -38,18 +40,19 @@ func (r *UserRepository) CreateUserWithWallet(ctx context.Context, name, email, 
 	}
 
 	return &models.User{
-		ID:     strconv.Itoa(id),
-		Name:   name,
-		Email:  email,
-		Role:   "comprador",
-		Status: "activa",
+		ID:        strconv.Itoa(id),
+		Name:      name,
+		Email:     email,
+		Role:      "comprador",
+		Status:    "activa",
+		CreatedAt: createdAt,
 	}, nil
 }
 
 func (r *UserRepository) GetUserByID(ctx context.Context, id int) (*models.User, error) {
 	var u models.User
 	var uID int
-	err := r.db.QueryRowContext(ctx, "SELECT id, name, email, role, status FROM users WHERE id = $1", id).Scan(&uID, &u.Name, &u.Email, &u.Role, &u.Status)
+	err := r.db.QueryRowContext(ctx, "SELECT id, name, email, role, status, created_at FROM users WHERE id = $1", id).Scan(&uID, &u.Name, &u.Email, &u.Role, &u.Status, &u.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
@@ -64,7 +67,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 	var u models.User
 	var uID int
 	var hash string
-	err := r.db.QueryRowContext(ctx, "SELECT id, name, email, role, status, password_hash FROM users WHERE email = $1", email).Scan(&uID, &u.Name, &u.Email, &u.Role, &u.Status, &hash)
+	err := r.db.QueryRowContext(ctx, "SELECT id, name, email, role, status, password_hash, created_at FROM users WHERE email = $1", email).Scan(&uID, &u.Name, &u.Email, &u.Role, &u.Status, &hash, &u.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, "", ErrNotFound
@@ -78,7 +81,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 func (r *UserRepository) UpdateUser(ctx context.Context, id int, name, email *string) (*models.User, error) {
 	var current models.User
 	var cID int
-	err := r.db.QueryRowContext(ctx, "SELECT id, name, email, role, status FROM users WHERE id = $1", id).Scan(&cID, &current.Name, &current.Email, &current.Role, &current.Status)
+	err := r.db.QueryRowContext(ctx, "SELECT id, name, email, role, status, created_at FROM users WHERE id = $1", id).Scan(&cID, &current.Name, &current.Email, &current.Role, &current.Status, &current.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound

@@ -1,9 +1,13 @@
 import DataLoader from 'dataloader';
 import { AppError } from '../../core/errors.js';
-import type { Item, ItemClient } from './item.client.js';
+import type { Item, ItemClient, NewItem } from './item.client.js';
 
 export class CatalogService {
   constructor(private readonly itemClient: ItemClient) {}
+
+  createItem(input: NewItem): Promise<Item> {
+    return this.itemClient.createItem(input);
+  }
 
   searchItems(search?: string): Promise<Item[]> {
     return this.itemClient.searchItems(search);

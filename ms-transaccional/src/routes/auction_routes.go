@@ -12,6 +12,10 @@ func SetupAuctionRoutes(mux *http.ServeMux, controller *controllers.AuctionContr
 			controller.ListAuctions(w, r)
 			return
 		}
+		if r.Method == http.MethodPost {
+			controller.CreateAuction(w, r)
+			return
+		}
 		http.NotFound(w, r)
 	})
 

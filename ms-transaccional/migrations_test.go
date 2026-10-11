@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	pgConnStr    = "postgres://pujaz_user:pujaz_password@localhost:5432/pujaz_transaccional?sslmode=disable"
+	pgConnStr    = "postgres://pujaz_user:pujaz_password@localhost:55432/pujaz_transaccional?sslmode=disable"
 	mongoConnStr = "mongodb://localhost:27017"
 )
 
@@ -89,7 +89,7 @@ func TestSeedConsistency(t *testing.T) {
 	}
 	defer client.Disconnect(ctx)
 
-	col := client.Database("pujaz_db").Collection("items")
+	col := client.Database("pujaz_catalogo").Collection("articulos")
 	cursor, err := col.Find(ctx, bson.M{})
 	if err != nil {
 		t.Log("No se encontraron items en Mongo, saltando comprobación.")
@@ -114,12 +114,30 @@ func TestSeedConsistency(t *testing.T) {
 
 		if mongoID != "" {
 			var auctionID int
-			err := db.QueryRow("SELECT id FROM auctions WHERE item_id = $1", mongoID).Scan(&auctionID)
+			var currentPrice float64
+			err := db.QueryRow("SELECT id, current_price FROM auctions WHERE item_id = $1", mongoID).Scan(&auctionID, &currentPrice)
 			if err == sql.ErrNoRows {
 				t.Errorf("Inconsistencia Semilla: El item %s está en Mongo pero NO tiene subasta en Postgres", mongoID)
 			} else if err != nil {
 				t.Fatalf("Error inesperado consultando Postgres: %v", err)
+			} else {
+				// Verifica que los precios coincidan
+				if mongoBase, ok := item["basePrice"].(float64); ok {
+					if currentPrice != mongoBase {
+						t.Errorf("Inconsistencia de Precios (KAN-53): Mongo=%f, Postgres=%f", mongoBase, currentPrice)
+					}
+				}
 			}
 		}
+	}
+	
+	// Validar Hashes (KAN-53)
+	var hash string
+	err = db.QueryRow("SELECT password_hash FROM users WHERE email = 'ana@correo.com'").Scan(&hash)
+	if err != nil {
+		t.Fatalf("No se encontró al usuario ana@correo.com")
+	}
+	if !strings.HasPrefix(hash, "$2a$") {
+		t.Errorf("Hash inválido encontrado para usuario semilla: %s", hash)
 	}
 }

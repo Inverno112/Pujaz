@@ -23,6 +23,31 @@ func writeError(w http.ResponseWriter, statusCode int, code string, message stri
 	json.NewEncoder(w).Encode(models.ApiError{Code: code, Message: message})
 }
 
+func (c *AuctionController) CreateAuction(w http.ResponseWriter, r *http.Request) {
+	var req models.CreateAuctionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_USER_INPUT", "Invalid JSON")
+		return
+	}
+	fmt.Printf("Parsed CreateAuctionRequest: %+v\n", req)
+
+	auction, err := c.service.CreateAuction(r.Context(), req.ItemID, req.BasePrice, req.EndsAt)
+	if err != nil {
+		if err == services.ErrInvalidInput || strings.Contains(err.Error(), "BAD_USER_INPUT") {
+			fmt.Println("Validation error in CreateAuction: BAD_USER_INPUT")
+			writeError(w, http.StatusBadRequest, "BAD_USER_INPUT", "Invalid auction parameters")
+			return
+		}
+		fmt.Println("500 ERROR:", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(auction)
+}
+
 func (c *AuctionController) GetAuction(w http.ResponseWriter, r *http.Request) {
 	// Parse URL path, e.g. /auctions/12
 	parts := strings.Split(r.URL.Path, "/")
