@@ -23,7 +23,7 @@ El Gateway se construye por etapas. Esta tabla dice qué funciona hoy con los **
 | 3 · Pujas y tiempo real | `placeBid`, `auctionUpdated` | ⏳ Pendiente (ya no está bloqueada) |
 | 4 · Billetera | `wallet`, `deposit` | ✅ Lista |
 | 5a · Perfil | `updateUser`, `deleteUser` | ✅ Lista |
-| 5b · Crear ítem | `createItem` | ⏳ Pendiente (ya no está bloqueada) |
+| 5b · Crear ítem | `createItem` | ✅ Lista |
 | 6 · MS reales | Clientes HTTP hacia los MS | 🟡 Listos; dependen de que los MS cumplan el contrato ([ver abajo](#con-los-ms-reales)) |
 
 > El schema completo ya se sirve (sirve para explorar tipos), pero solo funcionan las operaciones de las etapas marcadas como listas. Las demás, si las llamas, devuelven `null` (las que pueden ser nulas, como `item` o `auction`) o responden `INTERNAL`.
@@ -53,6 +53,7 @@ Con `USE_MOCKS=false`, el Gateway llama a los MS (`MS_TRANSACCIONAL_URL` y `MS_C
 - Lo que el MS envíe de más (por ejemplo `role` y `status` del usuario) no llega a la SPA.
 - Los errores de los MS conservan su código. Los del MS catálogo, que vienen en formato de FastAPI (`{ "detail": ... }`), se traducen: 404 → `NOT_FOUND`, 400/422 → `BAD_USER_INPUT`.
 - Un usuario que el MS marca con `status: "inactiva"` (borrado) se trata como `NOT_FOUND`.
+- `createItem` envía `description` tal cual. El schema la deja opcional, pero el MS catálogo la exige: sin descripción, el MS responde `BAD_USER_INPUT`.
 - Si un MS no responde en 5 segundos o está caído, la SPA recibe `INTERNAL`.
 
 ### Qué funciona hoy (10 de octubre)
@@ -64,6 +65,7 @@ Con `USE_MOCKS=false`, el Gateway llama a los MS (`MS_TRANSACCIONAL_URL` y `MS_C
 | `deleteUser` | ✅ | — |
 | `register`, `login`, `me`, `updateUser` | ❌ `INTERNAL` | El usuario del MS transaccional no trae `createdAt` (Heider) |
 | `login` con los usuarios de la semilla | ❌ `INVALID_CREDENTIALS` | Sus contraseñas en la semilla no son hashes bcrypt válidos (Frank / Heider) |
+| `createItem` | ❌ `INTERNAL`, sin llamar a ningún MS | No existe `POST /auctions` (Heider). El Gateway no crea el ítem para no dejarlo sin subasta en el catálogo |
 
 Para probar con los MS reales, en `docker-compose.yml` (o en un `docker-compose.override.yml` local) se pone `USE_MOCKS: "false"` en el servicio `gateway-bff`.
 
@@ -74,7 +76,7 @@ Para probar con los MS reales, en `docker-compose.yml` (o en un `docker-compose.
 Los dos bloqueos del contrato se resolvieron en `schema.graphql` (PR #9):
 
 - **B1:** `Bid.bidder` y `Auction.participants` son ahora del tipo `Bidder { id, name }`, sin correo. Desbloquea la etapa 3.
-- **B2:** `CreateItemInput` tiene `endsAt` opcional. Desbloquea la etapa 5b. **Falta decidir** la duración por defecto cuando la SPA no lo envía (propuesta: 24 horas).
+- **B2:** `CreateItemInput` tiene `endsAt` opcional. Si la SPA no lo envía, la subasta dura **14 días**. El Gateway no pone tope ni valida la fecha: esas reglas son del MS (por ejemplo, `endsAt` en el pasado → `BAD_USER_INPUT`).
 
 Si aparece otro bloqueo, se resuelve igual: el equipo acuerda la solución, se cambia el contrato en un Pull Request propio (rama `docs/...`) y se actualiza este README.
 
@@ -229,6 +231,5 @@ npm run dev
 - **Una sola copia del Gateway.** Los eventos en vivo (`auctionUpdated`) se publican en memoria. Con dos copias, un suscriptor no vería las pujas hechas en la otra.
 - **El contrato manda.** [schema.graphql](../docs/contrato/schema.graphql) (SPA ↔ Gateway) y [rest.md](../docs/contrato/rest.md) (Gateway ↔ MS) son la fuente de verdad. Para cambiarlos se abre un Pull Request propio que aprueban los dueños de ambos lados.
 - **Preguntas abiertas** ([rest.md §4](../docs/contrato/rest.md#4-preguntas-abiertas-para-el-equipo)):
-  - Duración por defecto de una subasta cuando `createItem` no trae `endsAt` (ver [Bloqueos resueltos](#bloqueos-resueltos)).
   - Al cerrar una subasta, el dinero del ganador se queda en `reserved`: no hay un movimiento que lo cobre. Es una limitación conocida que queda fuera del prototipo, no un bloqueo.
 - **Flujo de Git:** la rama de integración del equipo es `developcito` en heider88/Pujaz. Las ramas de trabajo salen de `develop` del fork, vuelven ahí y de ahí se abre el PR a `upstream/developcito`.
