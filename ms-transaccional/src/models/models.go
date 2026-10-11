@@ -56,7 +56,8 @@ type WalletResponse struct {
 }
 
 type DepositRequest struct {
-	Amount float64 `json:"amount"`
+	Amount    float64 `json:"amount"`
+	PromoCode string  `json:"promoCode,omitempty"`
 }
 
 type User struct {

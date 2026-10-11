@@ -104,7 +104,7 @@ func (s *AuctionService) PlaceBid(ctx context.Context, auctionIDStr string, user
 	}
 
 	// 3. Check amount
-	if amount <= auction.CurrentPrice {
+	if amount < auction.CurrentPrice+100 {
 		return nil, ErrBidTooLow
 	}
 

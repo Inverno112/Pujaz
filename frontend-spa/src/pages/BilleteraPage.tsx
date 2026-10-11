@@ -21,6 +21,7 @@ function signo(tipo: TipoMovimiento): string {
 export function BilleteraPage() {
   const { data, loading, error, refetch } = useQuery(WALLET)
   const [monto, setMonto] = useState('')
+  const [promoCode, setPromoCode] = useState('')
   const [errorRecarga, setErrorRecarga] = useState<string | null>(null)
   const [recargado, setRecargado] = useState<number | null>(null)
 
@@ -41,13 +42,14 @@ export function BilleteraPage() {
       return
     }
     try {
-      await recargar({ variables: { amount: cantidad } })
+      await recargar({ variables: { amount: cantidad, promoCode: promoCode.trim() } })
       setRecargado(cantidad)
       setMonto('')
+      setPromoCode('')
     } catch (e) {
       setErrorRecarga(
         codigoError(e) === 'BAD_USER_INPUT'
-          ? 'El monto debe ser mayor que cero.'
+          ? 'Monto o código promocional inválidos.'
           : 'No se pudo hacer la recarga. Intenta de nuevo en un momento.',
       )
     }
@@ -99,6 +101,15 @@ export function BilleteraPage() {
           required
           value={monto}
           onChange={(evento) => setMonto(evento.target.value)}
+        />
+        <label htmlFor="promo-code">Código promocional</label>
+        <input
+          id="promo-code"
+          type="text"
+          required
+          placeholder="Ej: PROMO2026"
+          value={promoCode}
+          onChange={(evento) => setPromoCode(evento.target.value)}
         />
         <button type="submit" disabled={recargando}>
           {recargando ? 'Recargando…' : 'Recargar'}
