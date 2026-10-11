@@ -130,14 +130,19 @@ func (s *AuctionService) PlaceBid(ctx context.Context, auctionIDStr string, user
 	}
 
 	// 5 & 6. Update Wallets and Add Movements
-	if prevWinnerID != 0 && prevWinnerID != userID {
-		// Refund previous winner
-		pwID, pwAvail, pwRes, err := s.repo.GetWalletForUpdate(ctx, tx, prevWinnerID)
-		if err == nil {
-			err = s.repo.UpdateWalletBalances(ctx, tx, pwID, pwAvail+auction.WinningBid.Amount, pwRes-auction.WinningBid.Amount)
+	if prevWinnerID != 0 {
+		if prevWinnerID != userID {
+			// Refund previous winner
+			pwID, pwAvail, pwRes, err := s.repo.GetWalletForUpdate(ctx, tx, prevWinnerID)
 			if err == nil {
-				_ = s.repo.AddWalletMovement(ctx, tx, pwID, auction.WinningBid.Amount, "reintegro", &auctionID)
+				err = s.repo.UpdateWalletBalances(ctx, tx, pwID, pwAvail+auction.WinningBid.Amount, pwRes-auction.WinningBid.Amount)
+				if err == nil {
+					_ = s.repo.AddWalletMovement(ctx, tx, pwID, auction.WinningBid.Amount, "reintegro", &auctionID)
+				}
 			}
+		} else {
+			// User is outbidding themselves: record a refund movement for the old bid to balance the ledger visually
+			_ = s.repo.AddWalletMovement(ctx, tx, wID, auction.WinningBid.Amount, "reintegro", &auctionID)
 		}
 	}
 
