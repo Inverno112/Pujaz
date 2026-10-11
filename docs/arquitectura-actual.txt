@@ -1,0 +1,204 @@
+PUJAZ - RESUMEN DE ARQUITECTURA Y ESTRUCTURA ACTUAL
+====================================================
+
+Fecha de referencia: 2026-10-11
+Estado: base inicial del sistema de subastas
+
+1. VISION GENERAL
+-----------------
+Pujaz es una plataforma web de subastas diseñada con una arquitectura SOFEA
+(Service-Oriented Front-End Architecture) y microservicios. La idea central es
+separar el catalogo de articulos de la logica transaccional, con una base de
+datos independiente para cada dominio (Database per Service).
+
+La arquitectura objetivo contempla:
+- Frontend SPA para la experiencia del usuario.
+- Servidor web para servir los archivos estaticos del frontend.
+- Gateway/BFF como punto de entrada de la API, autenticacion, WebSockets y
+  orquestacion.
+- Microservicio de Catalogo para articulos, fotos, categorias y busquedas.
+- Microservicio Transaccional para usuarios, subastas, pujas y billetera.
+- PostgreSQL para datos transaccionales.
+- MongoDB para documentos y datos flexibles del catalogo.
+
+Importante: la arquitectura objetivo esta descrita en el README, pero el
+estado implementado actualmente es parcial. Docker Compose solo declara tres
+servicios de infraestructura/ejecucion: PostgreSQL, MongoDB y ms-catalogo.
+
+2. ESTRUCTURA ACTUAL DEL REPOSITORIO
+------------------------------------
+/
+|-- README.md                         Documentacion general y arquitectura objetivo
+|-- docker-compose.yml                Orquestacion local actual
+|-- docs/
+|   `-- .gitkeep                       Directorio reservado para documentacion
+|-- frontend-spa/
+|   `-- .gitkeep                       Frontend aun no implementado
+|-- gateway-bff/
+|   |-- .gitkeep
+|   `-- src/
+|       |-- config/.gitkeep            Configuracion prevista
+|       |-- middlewares/.gitkeep       Middlewares previstos
+|       |-- routes/.gitkeep            Rutas previstas
+|       `-- services/.gitkeep          Servicios de integracion previstos
+|-- mongo-init/
+|   `-- init.js                         Indices y datos semilla de MongoDB
+|-- ms-catalogo/
+|   |-- Dockerfile                      Imagen del microservicio
+|   |-- requirements.txt                Dependencias Python
+|   |-- .gitkeep
+|   `-- src/
+|       |-- main.py                     Aplicacion FastAPI y endpoints actuales
+|       |-- api/routes/.gitkeep         Rutas previstas
+|       |-- core/services/.gitkeep      Logica de dominio prevista
+|       |-- infrastructure/db/.gitkeep Persistencia prevista
+|       `-- models/.gitkeep             Modelos previstos
+`-- ms-transaccional/
+    |-- .gitkeep
+    |-- migrations/
+    |   |-- 000001_init_schema.up.sql    Esquema PostgreSQL
+    |   `-- 000002_seed_data.up.sql      Datos iniciales
+    `-- src/
+        |-- controllers/.gitkeep       Controladores previstos
+        |-- models/.gitkeep            Modelos previstos
+        |-- repositories/.gitkeep      Repositorios previstos
+        |-- routes/.gitkeep            Rutas previstas
+        `-- services/.gitkeep          Servicios de negocio previstos
+
+3. COMPONENTES Y RESPONSABILIDADES
+-----------------------------------
+
+3.1 Frontend SPA
+- Ubicacion: frontend-spa/
+- Estado: no implementado; solo contiene .gitkeep.
+- Responsabilidad prevista: cliente web descargado una vez para consultar
+  articulos, ver subastas, autenticarse y realizar pujas.
+- Tecnologia propuesta: TypeScript.
+
+3.2 Gateway / BFF
+- Ubicacion: gateway-bff/
+- Estado: no implementado; solo existen carpetas vacias.
+- Responsabilidad prevista: punto de entrada para el frontend, autenticacion,
+  validacion, composicion de respuestas, orquestacion entre microservicios y
+  WebSockets para actualizaciones en tiempo real.
+- Tecnologia propuesta: TypeScript.
+
+3.3 Microservicio de Catalogo
+- Ubicacion: ms-catalogo/
+- Estado: implementacion minima funcional con FastAPI.
+- Tecnologia: Python 3.11, FastAPI, Uvicorn, PyMongo y Pydantic.
+- Puerto publicado: 8000.
+- Imagen: python:3.11-slim.
+- Punto de entrada: src.main:app.
+- Endpoints actuales:
+  - GET /: devuelve un mensaje de salud.
+  - GET /api/articulos: devuelve dos articulos fijos de ejemplo.
+- Persistencia: el contenedor recibe MONGO_URI, pero main.py aun no usa
+  MongoDB; la respuesta actual esta hardcodeada.
+- Evolucion prevista: mover rutas, servicios, modelos y acceso a datos a las
+  carpetas ya creadas.
+
+3.4 Microservicio Transaccional
+- Ubicacion: ms-transaccional/
+- Estado: no tiene codigo de aplicacion; solo migraciones SQL y carpetas vacias.
+- Tecnologia propuesta: Go.
+- Responsabilidad prevista: operaciones de alta integridad como pujas,
+  billetera, estado de subastas, pagos y usuarios.
+- Persistencia prevista: PostgreSQL independiente del catalogo.
+
+3.5 PostgreSQL
+- Servicio Compose: postgres-db.
+- Imagen: postgres:15.
+- Puerto: 5432.
+- Base de datos: pujaz_transaccional.
+- Usuario configurado: pujaz_user.
+- Volumen: postgres_data.
+- Tablas definidas en las migraciones:
+  - users: usuarios, correo, hash de password, rol y estado.
+  - wallet_movements: libro contable de movimientos de billetera.
+  - auctions: subastas, precio actual, estado, fecha de cierre y item_id.
+
+3.6 MongoDB
+- Servicio Compose: mongo-db.
+- Imagen: mongo:6.
+- Puerto: 27017.
+- Volumen: mongo_data.
+- Inicializacion: mongo-init/init.js.
+- Coleccion principal: items.
+- Indice: indice de texto sobre titulo, descripcion y categoria.
+- Datos semilla: 10 articulos.
+- Relacion con PostgreSQL: auctions.item_id usa el mismo valor hexadecimal
+  que el ObjectId del articulo en MongoDB. Esta es una relacion logica entre
+  servicios, no una clave foranea de base de datos.
+
+4. ORQUESTACION Y COMUNICACION
+------------------------------
+Docker Compose define actualmente estas dependencias:
+- ms-catalogo depende de mongo-db.
+- postgres-db y mongo-db son servicios independientes con volumen persistente.
+- ms-transaccional, gateway-bff y frontend-spa aun no estan incluidos como
+  servicios de Docker Compose.
+
+Flujo previsto de lectura:
+1. El usuario usa el Frontend SPA.
+2. El frontend llama al Gateway/BFF.
+3. El Gateway consulta ms-catalogo para informacion descriptiva del articulo
+   y ms-transaccional para el estado y datos de la subasta.
+4. Cada microservicio consulta solamente su propia base de datos.
+
+Flujo previsto de una puja:
+1. El frontend envia la accion al Gateway/BFF.
+2. El Gateway autentica y delega al microservicio transaccional.
+3. El microservicio valida la subasta, el saldo y las reglas de negocio.
+4. PostgreSQL registra el resultado y los movimientos de billetera.
+5. El Gateway puede publicar el cambio por WebSocket.
+
+Estos flujos son arquitectura objetivo; aun no existen sus endpoints ni la
+implementacion de integracion.
+
+5. DATOS SEMILLA Y RELACIONES
+-----------------------------
+- PostgreSQL crea 3 usuarios: 2 compradores y 1 vendedor.
+- PostgreSQL registra fondos iniciales para dos compradores mediante
+  wallet_movements.
+- PostgreSQL crea 10 subastas abiertas con cierre tres dias despues de la
+  ejecucion de la semilla.
+- MongoDB crea 10 articulos con ObjectId predefinidos.
+- Las subastas vinculan sus articulos mediante item_id y ObjectId.
+- La semilla de PostgreSQL y la de MongoDB deben mantenerse coordinadas para
+  conservar esa relacion logica.
+
+6. COMO EJECUTAR EL ESTADO ACTUAL
+----------------------------------
+Desde la raiz del repositorio:
+
+  docker compose up --build
+
+Servicios disponibles:
+- Catalogo: http://localhost:8000/
+- Articulos de ejemplo: http://localhost:8000/api/articulos
+- PostgreSQL: localhost:5432
+- MongoDB: localhost:27017
+
+El compose actual no levanta un frontend, un Gateway/BFF ni un servidor
+transaccional porque esos componentes todavia no estan implementados en la
+configuracion.
+
+7. PENDIENTES PRINCIPALES
+-------------------------
+- Implementar el frontend SPA y su servidor de archivos estaticos.
+- Implementar el Gateway/BFF, autenticacion, middlewares, rutas y WebSockets.
+- Implementar el microservicio transaccional y sus conexiones a PostgreSQL.
+- Conectar ms-catalogo realmente con MongoDB y reemplazar la respuesta fija.
+- Definir contratos HTTP entre el Gateway y los microservicios.
+- Automatizar la ejecucion de migraciones y semillas de PostgreSQL.
+- Revisar secretos: las credenciales de PostgreSQL estan escritas directamente
+  en docker-compose.yml y los hashes de ejemplo estan en la semilla.
+- Agregar pruebas unitarias, pruebas de integracion y healthchecks.
+
+8. OBSERVACION DE CONSISTENCIA
+------------------------------
+El README presenta seis contenedores como arquitectura del sistema, mientras
+que docker-compose.yml actualmente configura tres servicios ejecutables. Este
+documento refleja ambos niveles: la vision objetivo y la implementacion real
+presente en el repositorio.

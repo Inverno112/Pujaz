@@ -1,0 +1,27 @@
+{
+  "name": "pujaz",
+  "version": "1.0.0",
+  "description": "Plataforma web para una casa de subastas basada en una arquitectura SOFEA sobre microservicios.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Inverno112/Pujaz.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Inverno112/Pujaz/issues"
+  },
+  "homepage": "https://github.com/Inverno112/Pujaz#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.64.0"
+  }
+}
