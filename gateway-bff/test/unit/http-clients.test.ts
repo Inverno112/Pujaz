@@ -120,6 +120,24 @@ describe('HttpAuctionClient', () => {
     await expect(new HttpAuctionClient(http()).getAuctionsByIds(['1'])).rejects.toMatchObject({ code: 'INTERNAL' });
   });
 
+  it('placeBid envía userId y amount, y valida la puja y la subasta que responde el MS', async () => {
+    willRespond(201, { bid: MS_AUCTION.winningBid, auction: MS_AUCTION });
+    const placed = await new HttpAuctionClient(http()).placeBid('1', '4', 150);
+    expect(placed).toEqual({ bid: MS_AUCTION.winningBid, auction: MS_AUCTION });
+    expect(lastUrl()).toBe('http://ms/auctions/1/bids');
+    expect(fetchFn.mock.calls[0]![1]).toMatchObject({ method: 'POST', body: '{"userId":"4","amount":150}' });
+  });
+
+  it.each([
+    [409, 'BID_TOO_LOW'],
+    [409, 'AUCTION_CLOSED'],
+    [422, 'INSUFFICIENT_FUNDS'],
+    [404, 'NOT_FOUND'],
+  ])('placeBid conserva el error %s %s del MS', async (status, code) => {
+    willRespond(status, { code, message: 'x' });
+    await expect(new HttpAuctionClient(http()).placeBid('1', '4', 150)).rejects.toMatchObject({ code });
+  });
+
   it('una lista vacía no llama al MS', async () => {
     await expect(new HttpAuctionClient(http()).getAuctionsByIds([])).resolves.toEqual([]);
     expect(fetchFn).not.toHaveBeenCalled();
