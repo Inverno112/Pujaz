@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	pgConnStr    = "postgres://pujaz_user:pujaz_password@localhost:5432/pujaz_transaccional?sslmode=disable"
+	pgConnStr    = "postgres://pujaz_user:pujaz_password@localhost:55432/pujaz_transaccional?sslmode=disable"
 	mongoConnStr = "mongodb://localhost:27017"
 )
 

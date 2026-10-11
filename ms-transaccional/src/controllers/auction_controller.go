@@ -29,10 +29,12 @@ func (c *AuctionController) CreateAuction(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "BAD_USER_INPUT", "Invalid JSON")
 		return
 	}
+	fmt.Printf("Parsed CreateAuctionRequest: %+v\n", req)
 
 	auction, err := c.service.CreateAuction(r.Context(), req.ItemID, req.BasePrice, req.EndsAt)
 	if err != nil {
 		if err == services.ErrInvalidInput || strings.Contains(err.Error(), "BAD_USER_INPUT") {
+			fmt.Println("Validation error in CreateAuction: BAD_USER_INPUT")
 			writeError(w, http.StatusBadRequest, "BAD_USER_INPUT", "Invalid auction parameters")
 			return
 		}

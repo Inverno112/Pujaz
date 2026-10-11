@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"ms-transaccional/src/models"
 	"ms-transaccional/src/repositories"
 	"strconv"
@@ -44,7 +45,8 @@ func (s *AuctionService) CreateAuction(ctx context.Context, itemID string, baseP
 	
 	auction, err := s.repo.CreateAuction(ctx, itemID, basePrice, endsAt)
 	if err != nil {
-		if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "duplicate key") {
+		fmt.Println("Repo error:", err)
+		if strings.Contains(strings.ToLower(err.Error()), "unique") || strings.Contains(strings.ToLower(err.Error()), "duplicate") {
 			return nil, ErrInvalidInput
 		}
 		return nil, err
