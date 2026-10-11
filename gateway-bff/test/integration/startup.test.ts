@@ -12,7 +12,7 @@ function startGateway(vars: NodeJS.ProcessEnv) {
     cwd: projectRoot,
     env,
     encoding: 'utf8',
-    timeout: 15_000,
+    timeout: vars.PORT === '4987' ? 4_000 : 15_000,
   });
 }
 
@@ -30,14 +30,16 @@ describe('arranque del Gateway', () => {
     expect(result.stderr).not.toContain('corto');
   });
 
-  it('termina con un mensaje claro si USE_MOCKS=false (los clientes HTTP llegan en la etapa 6)', () => {
+  it('con USE_MOCKS=false arranca con los clientes HTTP hacia los MS', () => {
     const result = startGateway({
       USE_MOCKS: 'false',
       JWT_SECRET: VALID_SECRET,
-      MS_TRANSACCIONAL_URL: 'http://ms-transaccional',
-      MS_CATALOGO_URL: 'http://ms-catalogo',
+      MS_TRANSACCIONAL_URL: 'http://ms-transaccional:8080',
+      MS_CATALOGO_URL: 'http://ms-catalogo:8000',
+      PORT: '4987',
     });
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain('USE_MOCKS=true');
+    // Sigue escuchando hasta que spawnSync lo detiene por tiempo: no terminó con error.
+    expect(result.stdout).toContain('MS transaccional http://ms-transaccional:8080');
+    expect(result.stderr).not.toContain('configuración inválida');
   });
 });
