@@ -60,11 +60,12 @@ type DepositRequest struct {
 }
 
 type User struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Email  string `json:"email"`
-	Role   string `json:"role,omitempty"`
-	Status string `json:"status,omitempty"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role,omitempty"`
+	Status    string    `json:"status,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type CreateUserRequest struct {
