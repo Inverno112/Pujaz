@@ -120,9 +120,40 @@ describe('HttpAuctionClient', () => {
     await expect(new HttpAuctionClient(http()).getAuctionsByIds(['1'])).rejects.toMatchObject({ code: 'INTERNAL' });
   });
 
+  it('placeBid envía userId y amount, y valida la puja y la subasta que responde el MS', async () => {
+    willRespond(201, { bid: MS_AUCTION.winningBid, auction: MS_AUCTION });
+    const placed = await new HttpAuctionClient(http()).placeBid('1', '4', 150);
+    expect(placed).toEqual({ bid: MS_AUCTION.winningBid, auction: MS_AUCTION });
+    expect(lastUrl()).toBe('http://ms/auctions/1/bids');
+    expect(fetchFn.mock.calls[0]![1]).toMatchObject({ method: 'POST', body: '{"userId":"4","amount":150}' });
+  });
+
+  it.each([
+    [409, 'BID_TOO_LOW'],
+    [409, 'AUCTION_CLOSED'],
+    [422, 'INSUFFICIENT_FUNDS'],
+    [404, 'NOT_FOUND'],
+  ])('placeBid conserva el error %s %s del MS', async (status, code) => {
+    willRespond(status, { code, message: 'x' });
+    await expect(new HttpAuctionClient(http()).placeBid('1', '4', 150)).rejects.toMatchObject({ code });
+  });
+
   it('una lista vacía no llama al MS', async () => {
     await expect(new HttpAuctionClient(http()).getAuctionsByIds([])).resolves.toEqual([]);
     expect(fetchFn).not.toHaveBeenCalled();
+  });
+});
+
+describe('crear ítems con los MS reales (POST /auctions no existe)', () => {
+  it('createItem y createAuction responden INTERNAL sin llamar a los MS', async () => {
+    await expect(new HttpItemClient(http()).createItem({ name: 'Radio', basePrice: 1000 })).rejects.toMatchObject({
+      code: 'INTERNAL',
+    });
+    await expect(
+      new HttpAuctionClient(http()).createAuction({ itemId: 'x', basePrice: 1000, endsAt: '2099-01-01T00:00:00Z' }),
+    ).rejects.toMatchObject({ code: 'INTERNAL' });
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('POST /auctions no existe'));
   });
 });
 

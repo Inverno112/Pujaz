@@ -26,6 +26,42 @@ describe('MockItemClient', () => {
   });
 });
 
+describe('MockItemClient.createItem', () => {
+  it('crea el ítem con id de Mongo y valores vacíos en lo que no se envía', async () => {
+    const client = new MockItemClient();
+    const item = await client.createItem({ name: 'Radio', basePrice: 1000 });
+    expect(item).toMatchObject({ name: 'Radio', description: null, category: null, images: [], documents: [], basePrice: 1000 });
+    expect(item.id).toMatch(/^[0-9a-f]{24}$/);
+    expect(await client.getItem(item.id)).toEqual(item);
+  });
+
+  it.each([
+    [{ name: ' ', basePrice: 1000 }],
+    [{ name: 'Radio', basePrice: 0 }],
+  ])('responde BAD_USER_INPUT con %o', async (input) => {
+    await expect(new MockItemClient().createItem(input)).rejects.toMatchObject({ code: 'BAD_USER_INPUT' });
+  });
+});
+
+describe('MockAuctionClient.createAuction', () => {
+  const future = () => new Date(Date.now() + 86_400_000).toISOString();
+
+  it('crea una subasta abierta y sin pujas', async () => {
+    const client = new MockAuctionClient();
+    const auction = await client.createAuction({ itemId: 'nuevo', basePrice: 500, endsAt: future() });
+    expect(auction).toMatchObject({ itemId: 'nuevo', basePrice: 500, currentPrice: 500, winningBid: null, status: 'OPEN' });
+    expect(await client.getAuctionsByIds([auction.id])).toEqual([auction]);
+  });
+
+  it.each([
+    ['endsAt en el pasado', { itemId: 'nuevo', basePrice: 500, endsAt: '2020-01-01T00:00:00Z' }],
+    ['basePrice 0', { itemId: 'nuevo', basePrice: 0, endsAt: '2099-01-01T00:00:00Z' }],
+    ['ítem que ya tiene subasta', { itemId: MOCK_ITEM_IDS.watch, basePrice: 500, endsAt: '2099-01-01T00:00:00Z' }],
+  ])('responde BAD_USER_INPUT con %s', async (_case, input) => {
+    await expect(new MockAuctionClient().createAuction(input)).rejects.toMatchObject({ code: 'BAD_USER_INPUT' });
+  });
+});
+
 describe('MockAuctionClient', () => {
   afterEach(() => {
     vi.useRealTimers();

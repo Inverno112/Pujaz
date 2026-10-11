@@ -16,11 +16,14 @@
   "dependencies": {
     "dataloader": "^2.2.3",
     "graphql": "^17.0.2",
+    "graphql-ws": "^6.3.0",
     "graphql-yoga": "^5.24.4",
-    "jose": "^6.2.12"
+    "jose": "^6.2.12",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
+    "@types/ws": "^8.18.2",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3"

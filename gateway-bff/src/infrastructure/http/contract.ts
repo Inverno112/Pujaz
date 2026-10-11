@@ -1,7 +1,7 @@
 // Valida que las respuestas de los MS traigan todo lo que exige rest.md. Si falta algo obligatorio,
 // la respuesta no se usa: no se inventan datos. Cada función devuelve solo los campos del contrato,
 // así lo que el MS agregue de más no llega a la SPA.
-import type { Auction, AuctionStatus, Bid, UserSummary } from '../../modules/auctions/index.js';
+import type { Auction, AuctionStatus, Bid, PlacedBid, UserSummary } from '../../modules/auctions/index.js';
 import type { Item } from '../../modules/catalog/index.js';
 import type { User } from '../../modules/users/index.js';
 import type { MovementType, Wallet, WalletMovement } from '../../modules/wallet/index.js';
@@ -107,6 +107,15 @@ export function parseAuction(value: unknown): Auction {
     ),
     endsAt: string(json, 'endsAt', 'Auction'),
     status: oneOf(json, 'status', AUCTION_STATUSES, 'Auction'),
+  };
+}
+
+// rest.md §1.3 · respuesta de POST /auctions/{auctionId}/bids
+export function parsePlacedBid(value: unknown): PlacedBid {
+  const json = object(value, 'PlacedBid');
+  return {
+    bid: parseBid(field(json, 'bid', 'PlacedBid')),
+    auction: parseAuction(field(json, 'auction', 'PlacedBid')),
   };
 }
 

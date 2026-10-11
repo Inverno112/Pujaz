@@ -1,5 +1,5 @@
 import { AppError } from '../../../core/errors.js';
-import type { Wallet, WalletClient } from '../../../modules/wallet/index.js';
+import type { MovementType, Wallet, WalletClient, WalletMovement } from '../../../modules/wallet/index.js';
 
 const HOUR = 60 * 60 * 1000;
 
@@ -44,14 +44,31 @@ export class MockWalletClient implements WalletClient {
     }
     const wallet = this.findOrCreate(userId);
     wallet.available += amount;
-    wallet.movements.unshift({
-      id: String(this.nextMovementId++),
-      type: 'DEPOSIT',
-      amount,
-      auctionId: null,
-      createdAt: new Date().toISOString(),
-    });
+    wallet.movements.unshift(this.movement('DEPOSIT', amount, null));
     return structuredClone(wallet);
+  }
+
+  // Solo del cliente falso: los usa MockAuctionClient al pujar, como hace el MS en su transacción.
+  available(userId: string): number {
+    return this.findOrCreate(userId).available;
+  }
+
+  reserve(userId: string, auctionId: string, amount: number): void {
+    const wallet = this.findOrCreate(userId);
+    wallet.available -= amount;
+    wallet.reserved += amount;
+    wallet.movements.unshift(this.movement('RESERVE', amount, auctionId));
+  }
+
+  refund(userId: string, auctionId: string, amount: number): void {
+    const wallet = this.findOrCreate(userId);
+    wallet.reserved -= amount;
+    wallet.available += amount;
+    wallet.movements.unshift(this.movement('REFUND', amount, auctionId));
+  }
+
+  private movement(type: MovementType, amount: number, auctionId: string | null): WalletMovement {
+    return { id: String(this.nextMovementId++), type, amount, auctionId, createdAt: new Date().toISOString() };
   }
 
   // En el MS cada usuario tiene billetera desde que se crea. El cliente falso no comparte datos
