@@ -45,10 +45,7 @@ func (r *WalletRepository) GetWalletByUserID(ctx context.Context, userID int) (*
 	}
 
 	// Fetch movements
-	// En el ledger actual "wallet_movements", tenemos amount, type, created_at, pero NO auction_id.
-	// El contrato menciona "auctionId". Tenemos que ver si lo agregamos o si siempre es null.
-	// Por ahora devolvemos null, ya que el esquema (expand_model) no agregó auction_id a wallet_movements.
-	rows, err := r.db.QueryContext(ctx, "SELECT id, amount, type, created_at FROM wallet_movements WHERE wallet_id = $1 ORDER BY created_at DESC", wID)
+	rows, err := r.db.QueryContext(ctx, "SELECT id, amount, type, created_at, auction_id FROM wallet_movements WHERE wallet_id = $1 ORDER BY created_at DESC", wID)
 	wallet.Movements = []models.WalletMovement{}
 	if err == nil {
 		defer rows.Close()
@@ -56,9 +53,14 @@ func (r *WalletRepository) GetWalletByUserID(ctx context.Context, userID int) (*
 			var m models.WalletMovement
 			var dbType string
 			var mID int
-			if err := rows.Scan(&mID, &m.Amount, &dbType, &m.CreatedAt); err == nil {
+			var auctionID sql.NullInt64
+			if err := rows.Scan(&mID, &m.Amount, &dbType, &m.CreatedAt, &auctionID); err == nil {
 				m.ID = strconv.Itoa(mID)
 				m.Type = mapMovementType(dbType)
+				if auctionID.Valid {
+					aIDStr := strconv.FormatInt(auctionID.Int64, 10)
+					m.AuctionID = &aIDStr
+				}
 				wallet.Movements = append(wallet.Movements, m)
 			}
 		}

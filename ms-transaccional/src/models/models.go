@@ -83,3 +83,9 @@ type VerifyCredentialsRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+
+type CreateAuctionRequest struct {
+	ItemID    string    `json:"itemId"`
+	BasePrice float64   `json:"basePrice"`
+	EndsAt    time.Time `json:"endsAt"`
+}

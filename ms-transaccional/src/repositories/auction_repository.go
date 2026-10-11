@@ -7,6 +7,7 @@ import (
 	"errors"
 	"ms-transaccional/src/models"
 	"strconv"
+	"time"
 )
 
 var ErrNotFound = errors.New("NOT_FOUND")
@@ -117,6 +118,16 @@ func (r *AuctionRepository) GetAuctionForUpdate(ctx context.Context, tx *sql.Tx,
 	return r.getAuction(ctx, tx, aID)
 }
 
+func (r *AuctionRepository) CreateAuction(ctx context.Context, itemID string, basePrice float64, endsAt time.Time) (*models.Auction, error) {
+	var aID int
+	query := `INSERT INTO auctions (item_id, current_price, ends_at, status) VALUES ($1, $2, $3, 'abierta') RETURNING id`
+	err := r.db.QueryRowContext(ctx, query, itemID, basePrice, endsAt).Scan(&aID)
+	if err != nil {
+		return nil, err
+	}
+	return r.getAuction(ctx, r.db, aID)
+}
+
 func (r *AuctionRepository) UpdateAuctionPrice(ctx context.Context, tx *sql.Tx, auctionID int, newPrice float64) error {
 	_, err := tx.ExecContext(ctx, "UPDATE auctions SET current_price = $1 WHERE id = $2", newPrice, auctionID)
 	return err
@@ -162,7 +173,11 @@ func (r *AuctionRepository) UpdateWalletBalances(ctx context.Context, tx *sql.Tx
 	return err
 }
 
-func (r *AuctionRepository) AddWalletMovement(ctx context.Context, tx *sql.Tx, walletID int, amount float64, movType string) error {
+func (r *AuctionRepository) AddWalletMovement(ctx context.Context, tx *sql.Tx, walletID int, amount float64, movType string, auctionID *int) error {
+	if auctionID != nil {
+		_, err := tx.ExecContext(ctx, "INSERT INTO wallet_movements (wallet_id, amount, type, auction_id) VALUES ($1, $2, $3, $4)", walletID, amount, movType, *auctionID)
+		return err
+	}
 	_, err := tx.ExecContext(ctx, "INSERT INTO wallet_movements (wallet_id, amount, type) VALUES ($1, $2, $3)", walletID, amount, movType)
 	return err
 }

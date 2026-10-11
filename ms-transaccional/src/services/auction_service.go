@@ -6,14 +6,16 @@ import (
 	"ms-transaccional/src/models"
 	"ms-transaccional/src/repositories"
 	"strconv"
+	"strings"
 	"time"
 )
 
 var (
-	ErrAuctionClosed   = errors.New("AUCTION_CLOSED")
-	ErrBidTooLow       = errors.New("BID_TOO_LOW")
+	ErrAuctionClosed     = errors.New("AUCTION_CLOSED")
+	ErrBidTooLow         = errors.New("BID_TOO_LOW")
 	ErrInsufficientFunds = errors.New("INSUFFICIENT_FUNDS")
-	ErrNotFound        = repositories.ErrNotFound
+	ErrInvalidInput      = errors.New("BAD_USER_INPUT")
+	ErrNotFound          = repositories.ErrNotFound
 )
 
 type AuctionService struct {
@@ -30,6 +32,25 @@ func (s *AuctionService) updateStatus(a *models.Auction) {
 	} else {
 		a.Status = "OPEN"
 	}
+}
+
+func (s *AuctionService) CreateAuction(ctx context.Context, itemID string, basePrice float64, endsAt time.Time) (*models.Auction, error) {
+	if basePrice <= 0 {
+		return nil, ErrInvalidInput
+	}
+	if time.Now().UTC().After(endsAt) {
+		return nil, ErrInvalidInput
+	}
+	
+	auction, err := s.repo.CreateAuction(ctx, itemID, basePrice, endsAt)
+	if err != nil {
+		if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "duplicate key") {
+			return nil, ErrInvalidInput
+		}
+		return nil, err
+	}
+	s.updateStatus(auction)
+	return auction, nil
 }
 
 func (s *AuctionService) GetAuction(ctx context.Context, idStr string) (*models.Auction, error) {
@@ -113,7 +134,7 @@ func (s *AuctionService) PlaceBid(ctx context.Context, auctionIDStr string, user
 		if err == nil {
 			err = s.repo.UpdateWalletBalances(ctx, tx, pwID, pwAvail+auction.WinningBid.Amount, pwRes-auction.WinningBid.Amount)
 			if err == nil {
-				_ = s.repo.AddWalletMovement(ctx, tx, pwID, auction.WinningBid.Amount, "reintegro")
+				_ = s.repo.AddWalletMovement(ctx, tx, pwID, auction.WinningBid.Amount, "reintegro", &auctionID)
 			}
 		}
 	}
@@ -123,7 +144,7 @@ func (s *AuctionService) PlaceBid(ctx context.Context, auctionIDStr string, user
 	if err != nil {
 		return nil, err
 	}
-	err = s.repo.AddWalletMovement(ctx, tx, wID, amount, "reserva por puja")
+	err = s.repo.AddWalletMovement(ctx, tx, wID, amount, "reserva por puja", &auctionID)
 	if err != nil {
 		return nil, err
 	}
