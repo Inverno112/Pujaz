@@ -24,12 +24,22 @@ export function createAuctionsResolvers(auctionsService: AuctionsService) {
         loaders(ctx).auctionByItemId.load(args.itemId),
     },
     Mutation: {
+      // El usuario sale del token: placeBid no recibe un userId.
+      placeBid: (_parent: unknown, args: { auctionId: string; amount: number }, ctx: GatewayContext) =>
+        auctionsService.placeBid(requireUser(ctx), args.auctionId, args.amount),
       createItem: async (_parent: unknown, args: { input: CreateItemInput }, ctx: GatewayContext) => {
         requireUser(ctx);
         const { item, auction } = await auctionsService.createItem(args.input);
         // Item.auction ya tiene la subasta recién creada: no hace falta pedirla otra vez.
         loaders(ctx).auctionByItemId.prime(item.id, auction);
         return item;
+      },
+    },
+    Subscription: {
+      // Pública: no pide JWT (la subasta y quienes pujan, solo con id y nombre, son datos públicos).
+      auctionUpdated: {
+        subscribe: (_parent: unknown, args: { auctionId: string }) => auctionsService.subscribeToAuction(args.auctionId),
+        resolve: (auction: Auction) => auction,
       },
     },
     Item: {

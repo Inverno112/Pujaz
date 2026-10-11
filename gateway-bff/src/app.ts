@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { ConfigError, SCHEMA_PATH, type Config } from './config.js';
+import { createGatewayPubSub } from './core/pubsub.js';
 import { HttpAuctionClient } from './infrastructure/clients/http/auction.http.js';
 import { HttpItemClient } from './infrastructure/clients/http/item.http.js';
 import { HttpUserClient } from './infrastructure/clients/http/user.http.js';
@@ -29,7 +30,8 @@ export function buildGateway(config: Config, clients: Clients = createClients(co
   const authService = new AuthService(clients.userClient, tokenService);
   const usersService = new UsersService(clients.userClient);
   const catalogService = new CatalogService(clients.itemClient);
-  const auctionsService = new AuctionsService(clients.auctionClient, catalogService);
+  const pubsub = createGatewayPubSub();
+  const auctionsService = new AuctionsService(clients.auctionClient, catalogService, pubsub);
   const walletService = new WalletService(clients.walletClient);
 
   const authResolvers = createAuthResolvers(authService);
@@ -53,6 +55,7 @@ export function buildGateway(config: Config, clients: Clients = createClients(co
         ...walletResolvers.Mutation,
         ...auctionsResolvers.Mutation,
       },
+      Subscription: { ...auctionsResolvers.Subscription },
       Item: { ...auctionsResolvers.Item },
       Auction: { ...auctionsResolvers.Auction },
       WalletMovement: { ...auctionsResolvers.WalletMovement },
@@ -92,10 +95,12 @@ export function createHttpClients(config: Config): Clients {
 }
 
 export function createMockClients(): Clients {
+  const userClient = new MockUserClient();
+  const walletClient = new MockWalletClient();
   return {
-    userClient: new MockUserClient(),
+    userClient,
     itemClient: new MockItemClient(),
-    auctionClient: new MockAuctionClient(),
-    walletClient: new MockWalletClient(),
+    auctionClient: new MockAuctionClient({ wallet: walletClient, users: userClient }),
+    walletClient,
   };
 }

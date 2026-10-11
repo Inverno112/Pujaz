@@ -1,5 +1,8 @@
-import type { ExecutionResult } from 'graphql';
+import type { Server } from 'node:http';
+import type { ExecutionArgs, ExecutionResult } from 'graphql';
+import { useServer } from 'graphql-ws/use/ws';
 import { createSchema, createYoga, type Plugin, type YogaServerInstance } from 'graphql-yoga';
+import { WebSocketServer } from 'ws';
 import type { GatewayContext } from './core/context.js';
 import { maskError, toAllowedError } from './core/errors.js';
 
@@ -25,11 +28,59 @@ export function createGateway({
     schema: createSchema<GatewayContext>({ typeDefs, resolvers }),
     maskedErrors: { maskError },
     cors: { origin: corsOrigin },
-    context: async ({ request }): Promise<GatewayContext> => ({
-      userId: await getUserId(readBearerToken(request.headers.get('authorization'))),
+    // Por WebSocket no llega una petición HTTP: las suscripciones son públicas y van sin usuario.
+    context: async ({ request }: { request?: Request }): Promise<GatewayContext> => ({
+      userId: request ? await getUserId(readBearerToken(request.headers.get('authorization'))) : null,
     }),
     plugins: [useAllowedErrorCodes()],
   });
+}
+
+type GatewayYoga = YogaServerInstance<object, GatewayContext>;
+
+// Lo que graphql-ws acepta como resultado de ejecutar una operación.
+type OperationResult =
+  | Promise<AsyncIterable<ExecutionResult> | ExecutionResult>
+  | AsyncIterable<ExecutionResult>
+  | ExecutionResult;
+
+// Yoga entrega su execute y subscribe en rootValue para que graphql-ws los use.
+interface EnvelopedRoot {
+  execute: (args: ExecutionArgs) => OperationResult;
+  subscribe: (args: ExecutionArgs) => OperationResult;
+}
+
+// Suscripciones por WebSocket con el protocolo graphql-ws, en la misma ruta /graphql. Usa el
+// mismo pipeline de Yoga (schema, contexto y enmascarado de errores) que las peticiones HTTP.
+export function attachWebSocket(httpServer: Server, yoga: GatewayYoga): WebSocketServer {
+  const wsServer = new WebSocketServer({ server: httpServer, path: yoga.graphqlEndpoint });
+  useServer(
+    {
+      execute: (args) => (args.rootValue as EnvelopedRoot).execute(args),
+      subscribe: (args) => (args.rootValue as EnvelopedRoot).subscribe(args),
+      onSubscribe: async (ctx, _id, params) => {
+        const { schema, execute, subscribe, contextFactory, parse, validate } = yoga.getEnveloped({
+          ...ctx,
+          req: ctx.extra.request,
+          socket: ctx.extra.socket,
+          params,
+        });
+        const args = {
+          schema,
+          operationName: params.operationName,
+          document: parse(params.query),
+          variableValues: params.variables,
+          contextValue: await contextFactory(),
+          rootValue: { execute, subscribe },
+        };
+        const errors = validate(args.schema, args.document);
+        if (errors.length) return errors;
+        return args;
+      },
+    },
+    wsServer,
+  );
+  return wsServer;
 }
 
 function readBearerToken(header: string | null): string | null {

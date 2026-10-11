@@ -1,6 +1,7 @@
 import DataLoader from 'dataloader';
+import type { GatewayPubSub } from '../../core/pubsub.js';
 import type { CatalogService, Item, NewItem } from '../catalog/index.js';
-import type { Auction, AuctionClient } from './auction.client.js';
+import type { Auction, AuctionClient, Bid } from './auction.client.js';
 
 // Si la SPA no envía endsAt, la subasta dura dos semanas. El Gateway no pone tope a la fecha:
 // las reglas sobre ella (por ejemplo, que no esté en el pasado) son del MS.
@@ -32,7 +33,20 @@ export class AuctionsService {
   constructor(
     private readonly auctionClient: AuctionClient,
     private readonly catalogService: CatalogService,
+    private readonly pubsub: GatewayPubSub,
   ) {}
+
+  // Puja en el MS y, solo si se acepta, avisa a quienes siguen esa subasta (rest.md §3).
+  // Si el MS rechaza la puja, el error sube tal cual y no se publica nada.
+  async placeBid(userId: string, auctionId: string, amount: number): Promise<Bid> {
+    const { bid, auction } = await this.auctionClient.placeBid(auctionId, userId, amount);
+    this.pubsub.publish('auctionUpdated', auction.id, auction);
+    return bid;
+  }
+
+  subscribeToAuction(auctionId: string) {
+    return this.pubsub.subscribe('auctionUpdated', auctionId);
+  }
 
   // Crea el ítem en el MS catálogo y luego su subasta en el MS transaccional (rest.md §3).
   // Si la subasta falla, el ítem queda sin subasta: no hay compensación automática en el prototipo,
