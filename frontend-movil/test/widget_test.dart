@@ -1,30 +1,45 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:pujaz_mobile/main.dart';
+import 'package:pujaz_mobile/features/debug/presentation/debug_config_page.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('configura el host local y continúa', (tester) async {
+    String? configuredHost;
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(
+      DebugConfigPage(
+        initialHost: '10.0.2.2',
+        onConfigured: (host) async => configuredHost = host,
+      ),
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    expect(find.text('Configuración debug'), findsOneWidget);
+    expect(find.text('10.0.2.2'), findsOneWidget);
+
+    await tester.tap(find.text('Guardar y continuar'));
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(configuredHost, '10.0.2.2');
+  });
+
+  testWidgets('rechaza una URL completa como host', (tester) async {
+    await tester.pumpWidget(
+      DebugConfigPage(
+        initialHost: '10.0.2.2',
+        onConfigured: (_) async {},
+      ),
+    );
+
+    await tester.enterText(
+      find.byType(TextField),
+      'http://192.168.1.20',
+    );
+    await tester.tap(find.text('Guardar y continuar'));
+    await tester.pump();
+
+    expect(
+      find.text('Escribe solo la IP o el nombre del equipo.'),
+      findsOneWidget,
+    );
   });
 }
