@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../lib/core/errors/graphql_error_mapper.dart';
+import 'package:pujaz_mobile/core/errors/graphql_error_mapper.dart';
 
 void main() {
   test('maps known auction errors to Spanish messages', () {

@@ -42,4 +42,19 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('rechaza una dirección IPv4 inválida', (tester) async {
+    await tester.pumpWidget(
+      DebugConfigPage(
+        initialHost: '10.0.2.2',
+        onConfigured: (_) async {},
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), '192.168.1.999');
+    await tester.tap(find.text('Guardar y continuar'));
+    await tester.pump();
+
+    expect(find.text('Escribe solo la IP o el nombre del equipo.'), findsOneWidget);
+  });
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../config/app_config.dart';
+
 class DebugConfigPage extends StatefulWidget {
   const DebugConfigPage({
     super.key,
@@ -28,7 +30,7 @@ class _DebugConfigPageState extends State<DebugConfigPage> {
 
   Future<void> _continue() async {
     final host = _hostController.text.trim();
-    if (host.isEmpty || host.contains('/') || host.contains('://')) {
+    if (!AppConfig.isValidHost(host)) {
       setState(() => _error = 'Escribe solo la IP o el nombre del equipo.');
       return;
     }
