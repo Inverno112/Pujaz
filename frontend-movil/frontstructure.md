@@ -27,7 +27,7 @@ La dependencia de GraphQL debe configurar dos transportes:
 En un dispositivo físico, `10.0.2.2` se reemplaza por la IP de la máquina que
 ejecuta Docker. Las URLs no deben quedar codificadas en los widgets.
 
-## Estructura propuesta
+## Estructura actual
 
 ```text
 frontend-movil/
@@ -36,61 +36,59 @@ frontend-movil/
 ├── lib/
 │   ├── main.dart
 │   ├── app.dart
-│   ├── bootstrap.dart
 │   ├── config/
-│   │   ├── app_config.dart
-│   │   └── environment.dart
+│   │   └── app_config.dart
 │   ├── core/
 │   │   ├── errors/graphql_error_mapper.dart
-│   │   ├── formatters/currency_formatter.dart
-│   │   ├── formatters/date_formatter.dart
-│   │   ├── graphql/graphql_client_factory.dart
-│   │   ├── graphql/graphql_documents.dart
-│   │   ├── router/app_router.dart
-│   │   ├── theme/app_theme.dart
-│   │   └── widgets/
-│   │       ├── app_error_view.dart
-│   │       ├── app_loading_view.dart
-│   │       └── empty_state.dart
+│   │   ├── formatters/formatters.dart
+│   │   └── graphql/
+│   │       ├── graphql_client_factory.dart
+│   │       └── graphql_documents.dart
 │   ├── features/
 │   │   ├── auth/
 │   │   │   ├── data/auth_repository.dart
-│   │   │   ├── domain/auth_models.dart
 │   │   │   └── presentation/
-│   │   │       ├── login_page.dart
-│   │   │       ├── register_page.dart
+│   │   │       ├── auth_pages.dart
 │   │   │       └── session_controller.dart
 │   │   ├── auctions/
-│   │   │   ├── data/auction_repository.dart
-│   │   │   ├── domain/auction_models.dart
 │   │   │   └── presentation/
-│   │   │       ├── auction_list_page.dart
 │   │   │       ├── auction_detail_page.dart
-│   │   │       ├── auction_card.dart
-│   │   │       └── bid_panel.dart
+│   │   │       └── auction_list_page.dart
 │   │   ├── wallet/
-│   │   │   ├── data/wallet_repository.dart
-│   │   │   ├── domain/wallet_models.dart
 │   │   │   └── presentation/wallet_page.dart
-│   │   └── profile/
-│   │       ├── data/profile_repository.dart
-│   │       └── presentation/profile_page.dart
+│   │   ├── profile/
+│   │   │   └── presentation/profile_page.dart
+│   │   └── debug/
+│   │       └── presentation/debug_config_page.dart
 │   └── shared/
 │       ├── widgets/app_scaffold.dart
 │       └── widgets/primary_button.dart
 ├── test/
-│   ├── core/
-│   ├── features/auth/
-│   ├── features/auctions/
-│   └── features/wallet/
+│   ├── core/graphql_error_mapper_test.dart
+│   ├── core/formatters_test.dart
+│   └── widget_test.dart
+├── APKExec.md
+├── analysis_options.yaml
 ├── pubspec.yaml
+├── pubspec.lock
 └── README.md
 ```
 
-La regla de dependencias es unidireccional: `presentation` usa casos de uso o
-repositorios de `data`, `data` usa los documentos GraphQL de `core`, y `core`
-no conoce widgets ni reglas de negocio. Los modelos de dominio no deben
-exponer directamente mapas JSON a la UI.
+La configuración de ambiente se concentra en `config/app_config.dart` y recibe
+las URLs mediante `--dart-define`. El cliente GraphQL y sus documentos viven en
+`core/graphql`; el mapeo de errores y los formateadores son utilidades
+compartidas. Las pantallas se organizan por funcionalidad dentro de `features`
+y los widgets reutilizables se mantienen en `shared`.
+
+`README.md` documenta la ejecución y validación básicas. `APKExec.md` contiene
+el procedimiento para preparar Flutter, conectar un dispositivo, generar el
+APK y usar este Codespace desde VS Code local o clonar el proyecto para
+trabajar completamente en local.
+
+En modo debug, `main.dart` muestra primero `debug_config_page.dart` para
+configurar la IP o el host local del gateway. La dirección se guarda en
+`flutter_secure_storage` y se reutiliza al iniciar la siguiente sesión. Esta
+vista no se incluye en el flujo de producción.
 
 ## Navegación y experiencia móvil
 

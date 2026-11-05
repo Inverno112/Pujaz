@@ -79,3 +79,41 @@ APK generado:
 ```text
 build/app/outputs/flutter-apk/app-debug.apk
 ```
+
+## 6. Usar este Codespace desde VS Code local
+
+Instala la extensión **GitHub Codespaces** en tu VS Code local y ejecuta:
+
+```text
+Ctrl+Shift+P → Codespaces: Connect to Codespace
+```
+
+Selecciona esta sesión para trabajar desde tu computadora mientras el código y
+las herramientas continúan ejecutándose en el Codespace.
+
+Para usar el proyecto completamente en local, clona el repositorio:
+
+```bash
+git clone https://github.com/Inverno112/Pujaz.git
+cd Pujaz
+code .
+```
+
+### Flujo y alcance de la configuración debug
+
+Al iniciar la aplicación móvil en modo debug, aparece una vista independiente
+para introducir la IP o el host local que ejecuta el gateway de Pujaz. Al
+seleccionar **Guardar y continuar**, la aplicación:
+
+1. Guarda la IP en `flutter_secure_storage`.
+2. Construye las URLs HTTP y WebSocket de GraphQL usando esa IP.
+3. Inicializa el cliente GraphQL y restaura la sesión.
+4. Abre la aplicación móvil normalmente.
+
+En los siguientes arranques se reutiliza la IP guardada. Esta vista solo existe
+en modo debug; las compilaciones de producción siguen usando las URLs definidas
+con `--dart-define`.
+
+Este flujo está aislado dentro de `frontend-movil` y solo afecta la
+configuración de conexión de la aplicación móvil. No modifica el backend, la
+SPA, Docker ni otros módulos del proyecto.
