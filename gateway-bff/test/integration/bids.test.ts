@@ -29,10 +29,14 @@ function setup() {
   async function newBidder(name: string, balance: number) {
     const { data } = await graphql(
       `mutation ($input: RegisterInput!) { register(input: $input) { token user { id } } }`,
-      { input: { name, email: `${name.toLowerCase()}@correo.com`, password: 'secreto123' } },
+      { input: { name, email: `${name.toLowerCase()}@correo.com`, password: 'Secreto123' } },
     );
     const { token, user } = data.register;
-    if (balance > 0) await graphql('mutation ($a: Float!) { deposit(amount: $a) { available } }', { a: balance }, token);
+    if (balance > 0) await graphql(
+        'mutation ($a: Float!) { deposit(amount: $a, promoCode: "PROMO2026") { available } }',
+        { a: balance },
+        token,
+      );
     return { token, id: user.id as string };
   }
 
@@ -88,11 +92,19 @@ describe('pujas', () => {
     expect(data.auction.participants.map((p: { name: string }) => p.name)).toContain('Luis');
   });
 
-  it.each([120000, 100])('3. una puja de %s (≤ precio actual) devuelve BID_TOO_LOW', async (amount) => {
+  it.each([120000, 100, 120050])('3. una puja de %s (no supera el precio actual en 100) devuelve BID_TOO_LOW', async (amount) => {
     const { graphql, newBidder } = setup();
     const luis = await newBidder('Luis', 500000);
     const { errors } = await graphql(BID, { auctionId: OPEN_AUCTION, amount }, luis.token);
     expect(errors[0].extensions.code).toBe('BID_TOO_LOW');
+  });
+
+  it('3b. una puja que supera el precio actual en exactamente 100 se acepta', async () => {
+    const { graphql, newBidder } = setup();
+    const luis = await newBidder('Luis', 500000);
+    const { data, errors } = await graphql(BID, { auctionId: OPEN_AUCTION, amount: 120100 }, luis.token);
+    expect(errors).toBeUndefined();
+    expect(data.placeBid.amount).toBe(120100);
   });
 
   it('4. una puja en una subasta cerrada devuelve AUCTION_CLOSED', async () => {

@@ -17,14 +17,14 @@ describe('LoginPage', () => {
       ruta: '/login',
       mocks: [
         {
-          request: { query: LOGIN, variables: { email: 'ana@correo.com', password: 'secreto123' } },
+          request: { query: LOGIN, variables: { email: 'ana@correo.com', password: 'Secreto123' } },
           result: { data: { login: { __typename: 'AuthPayload', token: 'jwt-nuevo', user: ana } } },
         },
         { request: { query: GET_ITEMS, variables: { search: null } }, result: { data: { items: [] } } },
       ],
     })
 
-    llenarYEnviar('ana@correo.com', 'secreto123')
+    llenarYEnviar('ana@correo.com', 'Secreto123')
 
     expect(await screen.findByText('Hola, Ana Gómez')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Subastas' })).toBeInTheDocument()
@@ -36,7 +36,7 @@ describe('LoginPage', () => {
       ruta: '/login',
       mocks: [
         {
-          request: { query: LOGIN, variables: { email: 'ana@correo.com', password: 'malamala' } },
+          request: { query: LOGIN, variables: { email: 'ana@correo.com', password: 'Malamala1' } },
           result: {
             errors: [{ message: 'Credenciales inválidas', extensions: { code: 'INVALID_CREDENTIALS' } }],
           },
@@ -44,7 +44,7 @@ describe('LoginPage', () => {
       ],
     })
 
-    llenarYEnviar('ana@correo.com', 'malamala')
+    llenarYEnviar('ana@correo.com', 'Malamala1')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Correo o contraseña incorrectos.')
     expect(localStorage.getItem('pujaz_token')).toBeNull()

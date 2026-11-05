@@ -6,6 +6,9 @@ import type { MockWalletClient } from './wallet.mock.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 
+// Como el MS (auction_service.go): una puja debe superar el precio actual en al menos esto.
+const MIN_BID_INCREMENT = 100;
+
 interface StoredAuction {
   id: string;
   itemId: string;
@@ -73,8 +76,11 @@ export class MockAuctionClient implements AuctionClient {
     if (current.status === 'CLOSED') {
       throw new AppError('AUCTION_CLOSED', 'La subasta ya terminó.');
     }
-    if (amount <= current.currentPrice) {
-      throw new AppError('BID_TOO_LOW', `La puja debe superar el precio actual (${current.currentPrice}).`);
+    if (amount < current.currentPrice + MIN_BID_INCREMENT) {
+      throw new AppError(
+        'BID_TOO_LOW',
+        `La puja debe superar el precio actual (${current.currentPrice}) en al menos ${MIN_BID_INCREMENT}.`,
+      );
     }
     const previous = current.winningBid;
     const alreadyReserved = previous?.bidder.id === userId ? previous.amount : 0;

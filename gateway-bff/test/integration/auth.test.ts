@@ -30,7 +30,7 @@ const REGISTER = `mutation ($input: RegisterInput!) { register(input: $input) { 
 const LOGIN = `mutation ($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email } } }`;
 const ME = `{ me { id name email } }`;
 
-const NEW_USER = { name: 'Luis', email: 'luis@correo.com', password: 'secreto456' };
+const NEW_USER = { name: 'Luis', email: 'luis@correo.com', password: 'Secreto456' };
 
 describe('autenticación', () => {
   afterEach(() => {

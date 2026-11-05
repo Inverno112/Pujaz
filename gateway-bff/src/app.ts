@@ -61,15 +61,9 @@ export function buildGateway(config: Config, clients: Clients = createClients(co
       WalletMovement: { ...auctionsResolvers.WalletMovement },
     },
     corsOrigin: config.corsOrigin,
-    getUserId: async (token) => {
-      if (token === null) return null;
-      try {
-        return (await tokenService.verify(token)).userId;
-      } catch {
-        // Token inválido: las operaciones públicas siguen y las protegidas responden UNAUTHENTICATED.
-        return null;
-      }
-    },
+    // Token inválido o de un usuario eliminado: las operaciones públicas siguen y las protegidas
+    // responden UNAUTHENTICATED.
+    getUserId: (token) => (token === null ? Promise.resolve(null) : authService.resolveUserId(token)),
   });
 
   return { yoga, tokenService };

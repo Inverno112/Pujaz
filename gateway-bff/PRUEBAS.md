@@ -2,7 +2,7 @@
 
 Guía para revisar qué está probado en el Gateway y cómo probarlo a mano o con pruebas end-to-end.
 
-- **Automáticas:** 169 pruebas con Vitest, todas en verde. No necesitan Docker ni los microservicios.
+- **Automáticas:** 186 pruebas con Vitest. No necesitan Docker ni los microservicios.
 - **Contra los MS reales:** lo que levanta `docker compose`, a través de Nginx en `http://localhost:8080/graphql`. Ver la [sección 5](#5-con-los-microservicios-reales).
 - **A mano con datos falsos:** el Gateway solo, sin los MS ([sección 3](#3-probar-a-mano-datos-falsos)).
 
@@ -15,7 +15,7 @@ Requiere Node.js 22 o superior.
 ```bash
 cd gateway-bff
 npm install
-npm test                 # las 169 pruebas
+npm test                 # las 186 pruebas
 npm run typecheck        # revisión de tipos de TypeScript
 ```
 
@@ -45,16 +45,16 @@ Las pruebas usan los **clientes falsos** (datos en memoria que imitan a los MS).
 |---|---|---|
 | `integration/auth.test.ts` | 12 | `register`, `login`, `me`: token válido, `EMAIL_TAKEN`, `INVALID_CREDENTIALS` (mismo mensaje si falla el correo o la contraseña), `BAD_USER_INPUT`, token vencido o inválido → `UNAUTHENTICATED`, la contraseña nunca sale en la respuesta |
 | `integration/catalog.test.ts` | 14 | `items` (todos y con búsqueda), `item` inexistente → `null`, `auction(itemId)` con su ítem, ítem sin subasta → `null`, **una sola llamada** al MS para todo el listado, nada pide token |
-| `integration/bids.test.ts` | 11 | `placeBid`: sin token, puja válida (reserva saldo), reintegro al ganador anterior, `BID_TOO_LOW`, `AUCTION_CLOSED`, `INSUFFICIENT_FUNDS`, `NOT_FOUND`, el usuario sale del token |
+| `integration/bids.test.ts` | 13 | `placeBid`: sin token, puja válida (reserva saldo), reintegro al ganador anterior, `BID_TOO_LOW` (debe superar el precio actual en al menos 100), `AUCTION_CLOSED`, `INSUFFICIENT_FUNDS`, `NOT_FOUND`, el usuario sale del token |
 | `integration/realtime.test.ts` | 3 | `auctionUpdated`: dos suscriptores reciben el evento, uno de otra subasta no, una puja fallida no publica nada, no pide token |
-| `integration/wallet.test.ts` | 13 | `wallet` y `deposit`: sin token, saldos y orden de movimientos, monto ≤ 0 → `BAD_USER_INPUT`, la subasta de cada reserva en **una sola llamada** |
-| `integration/profile.test.ts` | 11 | `updateUser` y `deleteUser`: sin token, solo cambia lo enviado, `EMAIL_TAKEN`, validaciones, cambio de contraseña, cuenta borrada |
+| `integration/wallet.test.ts` | 15 | `wallet` y `deposit`: sin token, saldos y orden de movimientos, monto ≤ 0 o `promoCode` inválido o ausente → `BAD_USER_INPUT`, la subasta de cada reserva en **una sola llamada** |
+| `integration/profile.test.ts` | 13 | `updateUser` y `deleteUser`: sin token, solo cambia lo enviado, `EMAIL_TAKEN`, validaciones, cambio de contraseña, cuenta borrada, el token de una cuenta borrada ya no sirve (`UNAUTHENTICATED`) |
 | `integration/create-item.test.ts` | 9 | `createItem`: sin token, crea ítem y subasta, duración por defecto de 14 días, `BAD_USER_INPUT`, falla de la subasta |
 | `integration/server.test.ts` | 5 | El schema se sirve, errores con los códigos del contrato, error inesperado → `INTERNAL` sin detalles |
 | `integration/startup.test.ts` | 3 | Sin `JWT_SECRET` o con uno corto no arranca; con `USE_MOCKS=false` arranca con los clientes HTTP |
 | `unit/http-client.test.ts` | 11 | Traducción de errores de los MS, MS caído, tiempo de espera de 5 s, rutas que no existen |
-| `unit/http-clients.test.ts` | 22 | Cada cliente HTTP con respuestas reales de los MS: validación del contrato (por ejemplo, usuario sin `createdAt` → `INTERNAL`) |
-| `unit/*.mock.test.ts`, `token.service`, `config`, `auth.service` | 55 | Reglas de los clientes falsos, firma y vencimiento del JWT, variables de entorno |
+| `unit/http-clients.test.ts` | 27 | Cada cliente HTTP con respuestas reales de los MS: validación del contrato (por ejemplo, usuario sin `createdAt` → `INTERNAL`), `POST /items` y `POST /auctions`, lista vacía como `null` |
+| `unit/*.mock.test.ts`, `token.service`, `config`, `auth.service` | 61 | Reglas de los clientes falsos, firma y vencimiento del JWT, token de un usuario borrado, variables de entorno |
 
 
 ---
@@ -110,7 +110,7 @@ mutation { register(input: { name: "Luis", email: "luis@correo.com", password: "
 **Billetera** (con token):
 ```graphql
 { wallet { available reserved movements { type amount auction { id } } } }
-mutation { deposit(amount: 500000) { available } }
+mutation { deposit(amount: 500000, promoCode: "PROMO2026") { available } }
 ```
 
 **Pujar** (con el token de Luis, después de recargar):
@@ -135,8 +135,8 @@ Todo error llega en `errors[0].extensions.code`.
 | `wallet`, `deposit`, `placeBid`, `me`, `updateUser`, `deleteUser` o `createItem` sin token, o con un token inválido o vencido | `UNAUTHENTICATED` |
 | `login` con contraseña o correo incorrectos | `INVALID_CREDENTIALS` |
 | `register` con un correo ya usado, o `updateUser` con el correo de otro | `EMAIL_TAKEN` |
-| `register` con contraseña de menos de 8 caracteres, `deposit(amount: 0)`, `createItem` con precio base 0 | `BAD_USER_INPUT` |
-| `placeBid` en la subasta `12` por 120000 o menos | `BID_TOO_LOW` |
+| `register` con contraseña de menos de 8 caracteres, `deposit(amount: 0)`, `deposit` con un `promoCode` distinto de `PROMO2026`, `createItem` con precio base 0 | `BAD_USER_INPUT` |
+| `placeBid` en la subasta `12` por menos de 120100 (hay que superar el precio actual en al menos 100) | `BID_TOO_LOW` |
 | `placeBid` en la subasta `13` | `AUCTION_CLOSED` |
 | `placeBid` por más del saldo disponible | `INSUFFICIENT_FUNDS` |
 | `placeBid` en la subasta `999` | `NOT_FOUND` |
@@ -178,26 +178,23 @@ Las semillas solo se cargan cuando los volúmenes están vacíos. Las subastas d
 | Reloj Vintage | `60d5ec49f1b2c3d4e5f60001` | `1`, abierta |
 | Pintura Abstracta … Porsche 911 Clásico | `60d5ec49f1b2c3d4e5f60002` … `…60010` | `2` … `10`, abiertas |
 
-Usuarios: Ana, Heider y Cata (`ana@correo.com`, `heider@correo.com`, `cata@correo.com`), pero **no pueden iniciar sesión** (ver la tabla). Para probar se registra un usuario nuevo, se recarga su billetera con `deposit` y se puja.
+Cada subasta arranca en el `basePrice` de su ítem (por ejemplo, el Reloj Vintage en 100000).
+
+Usuarios: Ana, Heider y Cata (`ana@correo.com`, `heider@correo.com`, `cata@correo.com`), todos con contraseña `12345678`. También se puede registrar un usuario nuevo. Para pujar hay que recargar primero; la recarga exige el código promocional `PROMO2026`:
+
+```graphql
+mutation { deposit(amount: 500000, promoCode: "PROMO2026") { available } }
+```
 
 ### Qué funciona hoy
 
-| Operación | Con los MS reales |
-|---|---|
-| `items`, `item`, `auction`, la subasta de cada ítem | ✅ |
-| `placeBid`, `auctionUpdated` | ✅ |
-| `wallet`, `deposit` | ✅ (las reservas llegan sin su subasta: el MS las guarda con `auctionId: null`) |
-| `register`, `login`, `me`, `updateUser`, `deleteUser` | ✅ con usuarios registrados |
-| `login` de Ana, Heider o Cata (semilla) | ❌ `INVALID_CREDENTIALS`: sus contraseñas en la semilla no son hashes bcrypt |
-| `createItem` | ❌ `INTERNAL`: el MS transaccional no tiene `POST /auctions` |
+Todas las operaciones del schema funcionan con los MS reales: catálogo y subastas, registro, login (también los usuarios de la semilla), perfil, billetera con la subasta de cada reserva, pujas con reserva y reintegro, `auctionUpdated` y `createItem`.
 
-Además, las semillas no coinciden en el precio: el ítem en MongoDB tiene `basePrice` 100000 y su subasta en PostgreSQL arranca en `currentPrice` 100, así que se puede pujar por debajo del precio base.
-
-Lo más simple es **registrar un usuario nuevo** y usar su token. Si hace falta un token de un usuario de la semilla (que no pueden iniciar sesión), se puede firmar uno a mano, por ejemplo para el `1`:
-
-```bash
-docker compose exec gateway-bff node -e "import('/app/dist/modules/auth/token.service.js').then(async m => console.log(await new m.TokenService(process.env.JWT_SECRET, '1h').sign('1')))"
+**Crear ítem:**
+```graphql
+mutation { createItem(input: { name: "Radio Philips 1950", description: "De tubos", basePrice: 150000 }) { id auction { id status endsAt } } }
 ```
+Sin `endsAt`, la subasta dura 14 días. El MS catálogo exige `description`. Si la subasta se rechaza (`basePrice: 0` o `endsAt` en el pasado), responde `BAD_USER_INPUT` y el ítem queda en el catálogo sin subasta (`auction: null` en el listado).
 
 ### Leer el log del Gateway
 
@@ -223,7 +220,7 @@ Estos son los flujos que más valor tienen en las pruebas end-to-end de la SPA, 
 6. **Tiempo real:** dos usuarios en la misma subasta; cuando uno puja, el otro ve el cambio sin recargar.
 7. **Protección:** sin sesión, la billetera y el botón de pujar no deben estar disponibles (o deben pedir iniciar sesión).
 
-Con datos falsos se pueden correr todos. Con los MS reales también, registrando usuarios nuevos (los de la semilla no pueden iniciar sesión).
+Con datos falsos se pueden correr todos. Con los MS reales también, con los usuarios de la semilla o registrando usuarios nuevos.
 
 ---
 

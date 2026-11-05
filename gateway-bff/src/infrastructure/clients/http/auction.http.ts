@@ -1,5 +1,4 @@
 import type { Auction, AuctionClient, NewAuction, PlacedBid } from '../../../modules/auctions/index.js';
-import { MISSING_CREATE_AUCTION, createNotAvailable } from './not-available.js';
 import { parseAuction, parseListOf, parsePlacedBid } from '../../http/contract.js';
 import type { HttpClient } from '../../http/http-client.js';
 
@@ -24,10 +23,8 @@ export class HttpAuctionClient implements AuctionClient {
     return this.http.post(`/auctions/${encodeURIComponent(auctionId)}/bids`, { userId, amount }, parsePlacedBid);
   }
 
-  // Pendiente: el MS aún no tiene POST /auctions. Cuando exista:
-  // return this.http.post('/auctions', input, parseAuction);
-  async createAuction(_input: NewAuction): Promise<Auction> {
-    throw createNotAvailable('MS transaccional POST /auctions', MISSING_CREATE_AUCTION);
+  createAuction(input: NewAuction): Promise<Auction> {
+    return this.http.post('/auctions', input, parseAuction);
   }
 }
 

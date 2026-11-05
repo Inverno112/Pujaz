@@ -107,7 +107,7 @@ describe('PanelSubasta', () => {
   })
 
   it.each([
-    ['BID_TOO_LOW', 'Tu oferta debe superar el precio actual.'],
+    ['BID_TOO_LOW', 'Tu oferta debe superar el precio actual por al menos 100 COP.'],
     ['INSUFFICIENT_FUNDS', 'No tienes saldo disponible suficiente.'],
     ['AUCTION_CLOSED', 'Esta subasta ya terminó.'],
   ])('muestra el error %s', async (codigo, mensaje) => {

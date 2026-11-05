@@ -20,3 +20,11 @@ export function codigoError(error: unknown): CodigoError | null {
   }
   return null
 }
+
+// Extrae el mensaje de error que manda el servidor, útil para mostrar al usuario.
+export function mensajeErrorServidor(error: unknown): string {
+  if (CombinedGraphQLErrors.is(error) && error.errors.length > 0) {
+    return error.errors[0].message
+  }
+  return 'Ocurrió un error inesperado al conectar con el servidor.'
+}

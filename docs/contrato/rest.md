@@ -120,10 +120,10 @@ Errores: 404 `NOT_FOUND`, 409 `EMAIL_TAKEN`, 400 `BAD_USER_INPUT` (mismas reglas
 
 ```json
 // Request
-{ "amount": 500000.00 }
+{ "amount": 500000.00, "promoCode": "PROMO2026" }
 // 200: misma forma que GET /users/{userId}/wallet (ya con el depósito)
 ```
-Errores: 400 `BAD_USER_INPUT` (`amount` <= 0), 404 `NOT_FOUND`.
+Errores: 400 `BAD_USER_INPUT` (`amount` <= 0, o `promoCode` distinto de `PROMO2026`), 404 `NOT_FOUND`.
 
 ### 1.3 Subastas
 
@@ -160,7 +160,7 @@ Errores: 400 `BAD_USER_INPUT` (`endsAt` en el pasado, `basePrice` <= 0, o ya exi
 Todo ocurre en **una sola transacción de PostgreSQL**, con la fila de la subasta bloqueada (`SELECT ... FOR UPDATE`), en este orden:
 1. Si la subasta no existe: 404 `NOT_FOUND`.
 2. Si `status` es `CLOSED`: 409 `AUCTION_CLOSED`.
-3. Si `amount` <= `currentPrice`: 409 `BID_TOO_LOW`.
+3. Si `amount` < `currentPrice` + 100 (la puja debe superar el precio actual en al menos 100): 409 `BID_TOO_LOW`.
 4. Si el saldo disponible del usuario (más lo que ya tiene reservado en esta misma subasta, si ya iba ganando) es menor que `amount`: 422 `INSUFFICIENT_FUNDS`.
 5. Se reserva `amount` al usuario (movimiento `RESERVE`).
 6. Si había un ganador anterior, se le devuelve su monto (movimiento `REFUND`: pasa de `reserved` a `available`).

@@ -7,6 +7,7 @@ import { DetallePage } from './pages/DetallePage'
 import { ListadoPage } from './pages/ListadoPage'
 import { LoginPage } from './pages/LoginPage'
 import { PerfilPage } from './pages/PerfilPage'
+import { PublicarPage } from './pages/PublicarPage'
 import { RegistroPage } from './pages/RegistroPage'
 
 export function App() {
@@ -18,6 +19,7 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/registro" element={<RegistroPage />} />
         <Route element={<RutaPrivada />}>
+          <Route path="/publicar" element={<PublicarPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
           <Route path="/billetera" element={<BilleteraPage />} />
         </Route>

@@ -44,6 +44,16 @@ export interface ItemDetail extends Omit<ItemSummary, 'auction'> {
   auction: AuctionDetail | null
 }
 
+export interface CreateItemInput {
+  name: string
+  description?: string
+  category?: string
+  images?: string[]
+  documents?: string[]
+  basePrice: number
+  endsAt?: string
+}
+
 // Listado y búsqueda: search es opcional (null = todos los artículos).
 export const GET_ITEMS: TypedDocumentNode<
   { items: ItemSummary[] },
@@ -164,3 +174,26 @@ export const SUBASTA_TRAS_PUJA: TypedDocumentNode<
     }
   }
 `
+
+// Crear un artículo nuevo (requiere sesión).
+export const CREATE_ITEM: TypedDocumentNode<
+  { createItem: ItemSummary },
+  { input: CreateItemInput }
+> = gql`
+  mutation CreateItem($input: CreateItemInput!) {
+    createItem(input: $input) {
+      id
+      name
+      category
+      images
+      basePrice
+      auction {
+        id
+        currentPrice
+        status
+        endsAt
+      }
+    }
+  }
+`
+

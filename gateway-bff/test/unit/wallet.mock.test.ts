@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MockWalletClient } from '../../src/infrastructure/clients/mock/wallet.mock.js';
+import { MockWalletClient, VALID_PROMO_CODE } from '../../src/infrastructure/clients/mock/wallet.mock.js';
 
 describe('MockWalletClient', () => {
   it('arranca con la billetera de Ana del ejemplo del contrato', async () => {
@@ -13,7 +13,7 @@ describe('MockWalletClient', () => {
 
   it('deposit suma a available y agrega el movimiento al principio', async () => {
     const client = new MockWalletClient();
-    const wallet = await client.deposit('7', 20000);
+    const wallet = await client.deposit('7', 20000, VALID_PROMO_CODE);
     expect(wallet.available).toBe(400000);
     expect(wallet.reserved).toBe(120000);
     expect(wallet.movements[0]).toMatchObject({ type: 'DEPOSIT', amount: 20000, auctionId: null });
@@ -22,14 +22,20 @@ describe('MockWalletClient', () => {
 
   it.each([0, -1, Number.NaN])('deposit(%s) responde BAD_USER_INPUT y no cambia nada', async (amount) => {
     const client = new MockWalletClient();
-    await expect(client.deposit('7', amount)).rejects.toMatchObject({ code: 'BAD_USER_INPUT' });
+    await expect(client.deposit('7', amount, VALID_PROMO_CODE)).rejects.toMatchObject({ code: 'BAD_USER_INPUT' });
     expect((await client.getWallet('7')).available).toBe(380000);
+  });
+
+  it.each(['', 'promo2026', 'OTRO'])('deposit con el código "%s" responde BAD_USER_INPUT y no cambia nada', async (code) => {
+    const client = new MockWalletClient();
+    await expect(client.deposit('7', 20000, code)).rejects.toMatchObject({ code: 'BAD_USER_INPUT' });
+    expect(await client.getWallet('7')).toMatchObject({ available: 380000, movements: { length: 2 } });
   });
 
   it('un usuario sin billetera guardada recibe una vacía', async () => {
     const client = new MockWalletClient();
     expect(await client.getWallet('100')).toEqual({ userId: '100', available: 0, reserved: 0, movements: [] });
-    expect((await client.deposit('100', 1000)).available).toBe(1000);
+    expect((await client.deposit('100', 1000, VALID_PROMO_CODE)).available).toBe(1000);
   });
 
   it('devuelve copias: modificar una respuesta no cambia los datos guardados', async () => {

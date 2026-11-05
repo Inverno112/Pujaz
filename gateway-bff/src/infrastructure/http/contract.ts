@@ -19,7 +19,9 @@ function object(value: unknown, where: string): Json {
   return value as Json;
 }
 
+// Una lista vacía puede llegar como null: el MS transaccional (Go) serializa así un slice vacío.
 function list(value: unknown, where: string): unknown[] {
+  if (value === null) return [];
   if (!Array.isArray(value)) {
     throw new ContractError(`${where} no es una lista`);
   }

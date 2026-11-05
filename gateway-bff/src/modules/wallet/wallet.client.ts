@@ -22,6 +22,6 @@ export interface Wallet {
 export interface WalletClient {
   /** GET /users/{userId}/wallet · Errores: NOT_FOUND */
   getWallet(userId: string): Promise<Wallet>;
-  /** POST /users/{userId}/wallet/deposits · Errores: BAD_USER_INPUT (amount <= 0), NOT_FOUND */
+  /** POST /users/{userId}/wallet/deposits · Errores: BAD_USER_INPUT (amount <= 0 o promoCode inválido), NOT_FOUND */
   deposit(userId: string, amount: number, promoCode: string): Promise<Wallet>;
 }

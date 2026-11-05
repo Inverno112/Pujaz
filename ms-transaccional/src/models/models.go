@@ -76,8 +76,9 @@ type CreateUserRequest struct {
 }
 
 type UpdateUserRequest struct {
-	Name  *string `json:"name"`
-	Email *string `json:"email"`
+	Name     *string `json:"name"`
+	Email    *string `json:"email"`
+	Password *string `json:"password"`
 }
 
 type VerifyCredentialsRequest struct {

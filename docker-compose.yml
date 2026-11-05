@@ -6,7 +6,7 @@ services:
       - "${NGINX_PORT:-8080}:80"
     environment:
       GATEWAY_PORT: ${PORT:-4000}
-      NGINX_ENVSUBST_FILTER: ^GATEWAY_PORT$
+      NGINX_ENVSUBST_FILTER: ^GATEWAY_PORT$$
     volumes:
       - ./docker/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
     networks: [public, backend]

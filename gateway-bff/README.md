@@ -24,7 +24,7 @@ El Gateway se construye por etapas. Esta tabla dice qué funciona hoy con los **
 | 4 · Billetera | `wallet`, `deposit` | ✅ Lista |
 | 5a · Perfil | `updateUser`, `deleteUser` | ✅ Lista |
 | 5b · Crear ítem | `createItem` | ✅ Lista |
-| 6 · MS reales | Clientes HTTP hacia los MS | ✅ Conectado por defecto en `docker-compose.yml`. Pendientes del MS: `createItem` y `WalletMovement.auction` ([ver abajo](#con-los-ms-reales)) |
+| 6 · MS reales | Clientes HTTP hacia los MS | ✅ Conectado por defecto en `docker-compose.yml`; todas las operaciones funcionan con los MS ([ver abajo](#con-los-ms-reales)) |
 
 > Con **clientes falsos** (`USE_MOCKS=true`, solo para desarrollar el Gateway aislado), el Gateway usa datos en memoria que imitan a los MS y que se reinician cada vez que arranca. Datos de prueba:
 >
@@ -52,21 +52,22 @@ Con `USE_MOCKS=false`, el Gateway llama a los MS (`MS_TRANSACCIONAL_URL` y `MS_C
 - Los errores de los MS conservan su código. Los del MS catálogo, que vienen en formato de FastAPI (`{ "detail": ... }`), se traducen: 404 → `NOT_FOUND`, 400/422 → `BAD_USER_INPUT`.
 - Un usuario que el MS marca con `status: "inactiva"` (borrado) se trata como `NOT_FOUND`.
 - `createItem` envía `description` tal cual. El schema la deja opcional, pero el MS catálogo la exige: sin descripción, el MS responde `BAD_USER_INPUT`.
+- Una lista vacía puede llegar como `[]` o como `null` (así serializa Go un slice vacío); las dos se leen como lista vacía.
 - Si un MS no responde en 5 segundos o está caído, la SPA recibe `INTERNAL`.
 
-### Qué funciona hoy (11 de octubre)
+### Qué funciona hoy (12 de octubre)
 
-| Operación | Con los MS reales | Qué falta y de quién depende |
-|---|---|---|
-| `items`, `item`, `auction`, `Item.auction`, `Auction.item` | ✅ | — |
-| `placeBid`, `auctionUpdated` | ✅ | La puja reserva y reintegra saldo en el MS; el evento llega a quienes siguen esa subasta |
-| `wallet`, `deposit` | ✅ | Recarga, reserva al pujar y reintegro al ser superado, con sus movimientos |
-| `WalletMovement.auction` | 🟡 Sale `null` | `wallet_movements` no tiene `auction_id`, así que las reservas llegan con `auctionId: null` (Heider) |
-| `register`, `login`, `me`, `updateUser`, `deleteUser` | ✅ | — |
-| `login` con los usuarios de la semilla | ❌ `INVALID_CREDENTIALS` | Sus contraseñas en la semilla no son hashes bcrypt válidos: `000004_expand_seeds` solo corrige hashes vacíos y la semilla trae `hash_password123` (Frank / Heider). Mientras tanto, se crea un usuario con `register` |
-| `createItem` | ❌ `INTERNAL`, sin llamar a ningún MS | No existe `POST /auctions` (Heider). El Gateway no crea el ítem para no dejarlo sin subasta en el catálogo. Cuando exista, se descomenta la llamada en `infrastructure/clients/http/auction.http.ts` |
+| Operación | Con los MS reales |
+|---|---|
+| `items`, `item`, `auction`, `Item.auction`, `Auction.item` | ✅ |
+| `placeBid`, `auctionUpdated` | ✅ La puja reserva y reintegra saldo en el MS; el evento llega a quienes siguen esa subasta |
+| `wallet`, `deposit`, `WalletMovement.auction` | ✅ Recarga (con `promoCode`), reserva al pujar y reintegro al ser superado, cada movimiento con su subasta |
+| `register`, `login`, `me`, `updateUser`, `deleteUser` | ✅ También con los usuarios de la semilla (`ana@correo.com`, `heider@correo.com`, `cata@correo.com`, contraseña `12345678`) |
+| `createItem` | ✅ Crea el ítem en el MS catálogo y su subasta en el MS transaccional (14 días si no llega `endsAt`) |
 
-Verificado el 11 de octubre con `docker compose up --build` y volúmenes nuevos, a través de Nginx (`http://localhost:8080/graphql`): 32 de 33 casos pasan (catálogo, registro, login, perfil, billetera, pujas con sus errores, reintegro y `auctionUpdated` con dos usuarios). El que falla es `WalletMovement.auction`.
+Verificado el 12 de octubre con `docker compose up --build` y volúmenes nuevos, a través de Nginx (`http://localhost:8080/graphql`): 35 de 35 casos pasan (catálogo, registro, login, perfil, billetera, pujas con sus errores, reintegro, `auctionUpdated` con dos usuarios y `createItem`).
+
+**Limitación conocida:** si el MS catálogo crea el ítem pero el MS transaccional rechaza su subasta (por ejemplo, `basePrice: 0` o `endsAt` en el pasado), `createItem` devuelve `BAD_USER_INPUT` y el ítem queda en el catálogo sin subasta. En el listado aparece con `auction: null`. No hay compensación automática en el prototipo; el log del Gateway lo registra.
 
 `docker-compose.yml` usa los MS reales (`USE_MOCKS=false`). Para volver a los clientes falsos, se pone `USE_MOCKS=true` en `.env`.
 
@@ -107,6 +108,7 @@ curl -s http://localhost:4000/graphql \
 1. `login` o `register` devuelven `{ token, user }`.
 2. En cada operación protegida, la SPA envía el encabezado `Authorization: Bearer <token>`.
 3. El token dura **24 horas**. Cuando vence, las operaciones protegidas responden `UNAUTHENTICATED` y hay que iniciar sesión de nuevo.
+4. En cada petición con token, el Gateway confirma con el MS transaccional que el usuario siga existiendo. Si la cuenta se borró, su token deja de servir (`UNAUTHENTICATED`).
 
 | Públicas (sin token) | Protegidas (con token) |
 |---|---|
@@ -123,12 +125,12 @@ Todos los errores llegan en `errors[].extensions.code` con **uno de estos 9 valo
 
 | Código | Cuándo aparece |
 |---|---|
-| `UNAUTHENTICATED` | Operación protegida sin token, o con un token inválido o vencido |
+| `UNAUTHENTICATED` | Operación protegida sin token, o con un token inválido, vencido o de una cuenta borrada |
 | `INVALID_CREDENTIALS` | `login` con un correo o una contraseña incorrectos (mismo mensaje en los dos casos) |
 | `EMAIL_TAKEN` | `register` o `updateUser` con un correo que ya existe |
-| `BAD_USER_INPUT` | Datos inválidos (por ejemplo, `register` con un campo vacío, un correo inválido o una contraseña de menos de 8 caracteres, o `deposit` con monto <= 0) o una consulta GraphQL mal escrita |
+| `BAD_USER_INPUT` | Datos inválidos (por ejemplo, `register` con un campo vacío, un correo inválido o una contraseña de menos de 8 caracteres, o `deposit` con monto <= 0 o con un `promoCode` inválido) o una consulta GraphQL mal escrita |
 | `NOT_FOUND` | El recurso no existe (`item(id)` inexistente devuelve `null`, no este error) |
-| `BID_TOO_LOW` | La puja no supera el precio actual |
+| `BID_TOO_LOW` | La puja no supera el precio actual en al menos 100 |
 | `AUCTION_CLOSED` | La subasta ya terminó |
 | `INSUFFICIENT_FUNDS` | No hay saldo disponible suficiente para pujar |
 | `INTERNAL` | Fallo inesperado. El mensaje siempre es genérico y nunca trae detalles internos |
@@ -156,7 +158,7 @@ Todos los errores llegan en `errors[].extensions.code` con **uno de estos 9 valo
   ```
 
   El Gateway reenvía ese `code` a la SPA tal cual. Si el MS responde en otro formato, no responde o se cae, la SPA recibe `INTERNAL`.
-- Las consultas en lote (`GET /auctions?itemIds=`, `GET /auctions?ids=`, `GET /items?ids=`) devuelven `[]` cuando no encuentran nada, no un 404. El Gateway hace **una sola** llamada por listado, no una por elemento.
+- Las consultas en lote (`GET /auctions?itemIds=`, `GET /auctions?ids=`, `GET /items?ids=`) devuelven `[]` cuando no encuentran nada, no un 404 (el Gateway también acepta `null`). El Gateway hace **una sola** llamada por listado, no una por elemento.
 - El Gateway encuentra a los MS con `MS_TRANSACCIONAL_URL` y `MS_CATALOGO_URL`, que se definen en `docker-compose.yml`.
 
 ---

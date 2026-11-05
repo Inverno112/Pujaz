@@ -8,7 +8,7 @@ const tokens = new TokenService('x'.repeat(32), '24h');
 describe('AuthService', () => {
   it('register crea el usuario y firma un token con su id', async () => {
     const auth = new AuthService(new MockUserClient(), tokens);
-    const { token, user } = await auth.register({ name: 'Luis', email: 'luis@correo.com', password: 'secreto456' });
+    const { token, user } = await auth.register({ name: 'Luis', email: 'luis@correo.com', password: 'Secreto456' });
     await expect(tokens.verify(token)).resolves.toEqual({ userId: user.id });
   });
 
@@ -24,6 +24,24 @@ describe('AuthService', () => {
     await expect(auth.login({ email: 'ana@correo.com', password: 'mala-clave' })).rejects.toMatchObject({
       code: 'INVALID_CREDENTIALS',
     });
+  });
+
+  it('resolveUserId devuelve el userId de un token válido de un usuario que existe', async () => {
+    const auth = new AuthService(new MockUserClient(), tokens);
+    await expect(auth.resolveUserId(await tokens.sign('7'))).resolves.toBe('7');
+  });
+
+  it('resolveUserId devuelve null con un token inválido', async () => {
+    const auth = new AuthService(new MockUserClient(), tokens);
+    await expect(auth.resolveUserId('no-es-un-jwt')).resolves.toBeNull();
+  });
+
+  it('resolveUserId devuelve null si el usuario fue borrado', async () => {
+    const users = new MockUserClient();
+    const auth = new AuthService(users, tokens);
+    const token = await tokens.sign('7');
+    await users.deleteUser('7');
+    await expect(auth.resolveUserId(token)).resolves.toBeNull();
   });
 });
 

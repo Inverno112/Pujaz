@@ -39,11 +39,14 @@ No usar `docker compose down -v`.
 - `frontend-spa`: build reproducible con Node 22 y npm ci; imagen final Nginx,
   sin Node ni fuentes de la SPA. Monta la plantilla Nginx de este repositorio.
   Único puerto publicado: NGINX_PORT (8080 por defecto).
-- Red `public`: acceso a Nginx. Red `backend` interna: Nginx, Gateway y catálogo.
-  Red `data` interna: catálogo, PostgreSQL y MongoDB. Ninguna base publica puertos.
+- Red `public`: acceso a Nginx. Red `backend` interna: Nginx, Gateway y los dos
+  microservicios. Red `data` interna: los dos microservicios, PostgreSQL y MongoDB.
+  El Gateway no está en `data`, así que no puede llegar a las bases. Ninguna base
+  publica puertos.
 - `gateway-bff`: contexto adicional `contrato=./docs/contrato`; NODE_ENV=production,
   PORT (4000 por defecto), CORS_ORIGIN, JWT_SECRET y JWT_EXPIRES_IN (24h).
-  USE_MOCKS=true fijo hasta que el equipo implemente clientes HTTP.
+  USE_MOCKS=false por defecto: el Gateway llama a los microservicios reales
+  (MS_TRANSACCIONAL_URL y MS_CATALOGO_URL).
   JWT_SECRET se entrega únicamente a este servicio. Nginx recibe solo GATEWAY_PORT
   derivado de PORT; no recibe secretos ni el archivo de entorno completo.
 - PostgreSQL 15: POSTGRES_USER (pujaz_user), POSTGRES_DB (pujaz_transaccional),
@@ -53,9 +56,9 @@ No usar `docker compose down -v`.
 - Healthchecks reales: HTTP local para Nginx/catálogo, consulta GraphQL para Gateway,
   pg_isready para PostgreSQL y ping con mongosh para MongoDB.
 
-KAN-37 sigue siendo una entrega independiente. No se incluye ni recrea su plantilla
-raíz. Los nombres usados son compatibles con su propuesta; después de su integración,
-completar sus secretos y cambiar CORS_ORIGIN de 5173 al origen público de Nginx.
+La plantilla `.env.example` está en la raíz. Al copiarla a `.env` hay que completar
+POSTGRES_PASSWORD y JWT_SECRET, y cambiar CORS_ORIGIN de 5173 al origen público de
+Nginx (http://localhost:8080).
 En Compose, PORT determina el puerto interno del Gateway. API_GATEWAY_PORT, SPA_PORT,
 GRAPHQL_URL, WS_URL y DB_* no son consumidos por esta infraestructura; no sustituyen
 PORT, las variables POSTGRES_* ni las rutas relativas del navegador.

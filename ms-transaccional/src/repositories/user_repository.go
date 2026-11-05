@@ -52,7 +52,7 @@ func (r *UserRepository) CreateUserWithWallet(ctx context.Context, name, email, 
 func (r *UserRepository) GetUserByID(ctx context.Context, id int) (*models.User, error) {
 	var u models.User
 	var uID int
-	err := r.db.QueryRowContext(ctx, "SELECT id, name, email, role, status, created_at FROM users WHERE id = $1", id).Scan(&uID, &u.Name, &u.Email, &u.Role, &u.Status, &u.CreatedAt)
+	err := r.db.QueryRowContext(ctx, "SELECT id, name, email, role, status, created_at FROM users WHERE id = $1 AND status = 'activa'", id).Scan(&uID, &u.Name, &u.Email, &u.Role, &u.Status, &u.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
@@ -78,10 +78,11 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 	return &u, hash, nil
 }
 
-func (r *UserRepository) UpdateUser(ctx context.Context, id int, name, email *string) (*models.User, error) {
+// passwordHash en nil conserva la contraseña actual.
+func (r *UserRepository) UpdateUser(ctx context.Context, id int, name, email, passwordHash *string) (*models.User, error) {
 	var current models.User
 	var cID int
-	err := r.db.QueryRowContext(ctx, "SELECT id, name, email, role, status, created_at FROM users WHERE id = $1", id).Scan(&cID, &current.Name, &current.Email, &current.Role, &current.Status, &current.CreatedAt)
+	err := r.db.QueryRowContext(ctx, "SELECT id, name, email, role, status, created_at FROM users WHERE id = $1 AND status = 'activa'", id).Scan(&cID, &current.Name, &current.Email, &current.Role, &current.Status, &current.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
@@ -96,7 +97,7 @@ func (r *UserRepository) UpdateUser(ctx context.Context, id int, name, email *st
 		current.Email = *email
 	}
 
-	_, err = r.db.ExecContext(ctx, "UPDATE users SET name = $1, email = $2 WHERE id = $3", current.Name, current.Email, id)
+	_, err = r.db.ExecContext(ctx, "UPDATE users SET name = $1, email = $2, password_hash = COALESCE($3, password_hash) WHERE id = $4", current.Name, current.Email, passwordHash, id)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +107,7 @@ func (r *UserRepository) UpdateUser(ctx context.Context, id int, name, email *st
 }
 
 func (r *UserRepository) DeleteUser(ctx context.Context, id int) error {
-	res, err := r.db.ExecContext(ctx, "UPDATE users SET name = 'Usuario Eliminado', email = 'deleted_' || id || '@pujaz.com', status = 'inactiva', password_hash = '' WHERE id = $1", id)
+	res, err := r.db.ExecContext(ctx, "UPDATE users SET name = 'Usuario Eliminado', email = 'deleted_' || id || '@pujaz.com', status = 'inactiva', password_hash = '' WHERE id = $1 AND status = 'activa'", id)
 	if err != nil {
 		return err
 	}

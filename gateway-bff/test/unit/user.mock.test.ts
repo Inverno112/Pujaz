@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MockUserClient } from '../../src/infrastructure/clients/mock/user.mock.js';
 
-const NEW_USER = { name: 'Luis', email: 'luis@correo.com', password: 'secreto456' };
+const NEW_USER = { name: 'Luis', email: 'luis@correo.com', password: 'Secreto456' };
 
 describe('MockUserClient', () => {
   it('crea un usuario sin devolver la contraseña', async () => {
@@ -21,7 +21,7 @@ describe('MockUserClient', () => {
   });
 
   it('acepta una contraseña de exactamente 8 caracteres', async () => {
-    await expect(new MockUserClient().createUser({ ...NEW_USER, password: '12345678' })).resolves.toBeDefined();
+    await expect(new MockUserClient().createUser({ ...NEW_USER, password: 'Abcdef12' })).resolves.toBeDefined();
   });
 
   it('responde EMAIL_TAKEN si el correo ya existe', async () => {

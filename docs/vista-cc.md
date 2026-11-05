@@ -1,102 +1,57 @@
-# Vista de Arquitectura: Componentes y Conectores (C&C) - Pujaz
+# Vista de componentes y conectores (C&C) · Pujaz
 
-## Descripción
+Esta es la vista entregada en la primera entrega ([p1_1c.md](../p1_1c.md), versión `v1.0-entrega1`). El diagrama editable está en [vista-cc.drawio](vista-cc.drawio).
 
-Esta vista documenta los componentes en tiempo de ejecución del sistema de subastas
-**Pujaz** y sus conectores y protocolos. Representa la arquitectura objetivo y
-explicita las conexiones todavía pendientes de implementación o integración.
+![Vista C&C de Pujaz](vista-cc.png)
 
-Referencia de implementación: `developcito` en `c78871e`. La infraestructura de
-KAN-7, KAN-36 y KAN-49 se entrega por separado en el [PR #10](https://github.com/heider88/Pujaz/pull/10);
-no está incluida en esta base. Esta documentación no incorpora sus archivos.
+La vista muestra los elementos del sistema que tienen presencia en tiempo de ejecución: los componentes, que son los elementos de cómputo y de almacenamiento de datos, y los conectores, que son los caminos de interacción entre ellos. Tiene seis componentes: la SPA, que corre en el navegador del usuario, y cinco componentes que corren en contenedores. Para nombrarlos usamos la convención `Pz_nombre_categoría`, de modo que el nombre indique la función del componente; la categoría puede ser `fe` (front-end), `ag` (API gateway), `cl` (componente de lógica) o `db` (base de datos).
 
-## Diagrama C&C
+Cada componente se comunica con los demás a través de sus puertos, que son los cuadros pequeños en su borde. En cada conector, un componente cumple el rol de cliente y el otro el de servidor. Cada attachment une el puerto de un componente con su rol en el conector.
 
-```mermaid
-graph TD
-    subgraph Cliente ["Cliente / Navegador"]
-        SPA["Frontend SPA (React / Vite)"]
-    end
+El navegador descarga la SPA desde un contenedor con un servidor web estático (Nginx), que también reenvía las peticiones de `/graphql` al gateway sin modificarlas. Por eso, en la vista, ese servidor se trata como parte del conector GraphQL y no como un componente aparte. Es la razón por la que docker-compose levanta seis contenedores y la vista muestra cinco componentes en contenedores.
 
-    subgraph Infraestructura ["Infraestructura Docker — arquitectura objetivo"]
-        Nginx["Nginx: estáticos y reverse proxy<br/>Puerto interno 80; host 8080 por defecto en PR #10"]
-        Gateway["API Gateway BFF (GraphQL)<br/>Puerto 4000; USE_MOCKS=true"]
-        MS_Cat["Microservicio Catálogo<br/>FastAPI; puerto 8000"]
-        MS_Trans["Microservicio Transaccional<br/>Go; servidor y puerto pendientes"]
-    end
+Usamos tres tipos de conectores:
 
-    subgraph Persistencia ["Capa de Datos"]
-        Mongo[("MongoDB<br/>Catálogo; puerto 27017")]
-        Postgres[("PostgreSQL<br/>Subastas y usuarios; puerto 5432")]
-    end
+1. GraphQL, entre la SPA y el gateway. Funciona de dos formas sobre la misma ruta `/graphql`: las consultas y mutaciones van por HTTP, y la suscripción para el tiempo real va por WebSocket.
+2. REST sobre HTTP, entre el gateway y cada componente de lógica.
+3. Database Connection, entre cada componente de lógica y su base de datos.
 
-    SPA -->|"HTTP: estáticos y GraphQL en /graphql"| Nginx
-    Nginx -->|"HTTP: Proxy GraphQL a puerto 4000"| Gateway
-    SPA -.->|"WebSocket: subprotocolo graphql-transport-ws"| Nginx
-    Nginx -.->|"HTTP Upgrade / WebSocket"| Gateway
-    Gateway -.->|"HTTP: Peticiones REST a puerto 8000"| MS_Cat
-    Gateway -.->|"HTTP: Peticiones REST"| MS_Trans
-    MS_Cat -.->|"db_connector: puerto 27017"| Mongo
-    MS_Trans -.->|"db_connector: puerto 5432"| Postgres
-```
-
-Las líneas continuas describen el flujo HTTP del prototipo de infraestructura del
-PR #10. Las discontinuas indican conexiones previstas todavía no operativas.
-No representan un despliegue completo disponible en el commit base de esta vista.
-
-## Componentes y Conectores
+## Elementos y relaciones
 
 ### Componentes
 
-- **Frontend SPA:** Aplicación React compilada por Vite y ejecutada en el navegador.
-  Utiliza `/graphql` relativo al origen; el navegador no usa nombres internos Docker.
-- **Nginx:** Sirve los archivos compilados, aplica fallback a `/index.html` y actúa
-  como punto de entrada único del prototipo del PR #10. Escucha en el puerto 80 del
-  contenedor, publicado por defecto como 8080 en el host (`NGINX_PORT`).
-- **API Gateway BFF:** Expone el esquema GraphQL y valida JWT. Escucha por defecto
-  en 4000 (`PORT`). Actualmente utiliza clientes simulados en memoria.
-- **Microservicio Catálogo:** FastAPI/Python en 8000. Actualmente expone `/` y
-  `/api/articulos` con datos fijos; el contrato objetivo define `/items` y sus variantes.
-- **Microservicio Transaccional:** Componente previsto en Go para subastas, pujas y
-  usuarios. Existen migraciones y pruebas, pero no un servidor ejecutable ni un puerto acordado.
-- **Bases de datos:** MongoDB para catálogo y PostgreSQL para datos transaccionales,
-  siguiendo el principio de una base por servicio. El Gateway no accede directamente a ellas.
+| Componente | Tipo | Tecnología | Responsabilidad | Puerto |
+|---|---|---|---|---|
+| Pz_spa_fe | Presentación | TypeScript, React | Pantallas de listado, detalle, subasta en vivo, inicio de sesión, perfil y billetera. Corre en el navegador. | — |
+| Pz_api_ag | Lógica (API gateway) | TypeScript, Node.js, GraphQL | Expone el contrato GraphQL, valida el JWT, llama a los componentes de lógica, junta sus respuestas y envía las actualizaciones de las subastas. | 4000 |
+| Pz_transaccional_cl | Lógica | Go | Usuarios y credenciales, billetera, subastas y pujas, con transacciones ACID. | 8080 |
+| Pz_catalogo_cl | Lógica | Python, FastAPI | Fichas de las piezas, fotos, documentos, búsqueda y creación de piezas. | 8000 |
+| Pz_transaccional_db | Datos (relacional) | PostgreSQL | Usuarios, subastas, pujas y movimientos de la billetera. | 5432 |
+| Pz_catalogo_db | Datos (NoSQL) | MongoDB | Fichas del catálogo. | 27017 |
 
-### Conectores y protocolos
+### Conectores
 
-| Origen → destino | Protocolo, ruta y puerto | Estado y responsabilidad |
+| Conector | Entre | Puerto | Uso |
+|---|---|---|---|
+| GraphQL | Pz_spa_fe y Pz_api_ag | 4000 | Consultas y mutaciones de cada pantalla, y la suscripción con la que el gateway avisa el nuevo precio cada vez que acepta una puja. |
+| REST sobre HTTP | Pz_api_ag y Pz_transaccional_cl | 8080 | Inicio de sesión, usuarios, billetera, subastas y pujas. |
+| REST sobre HTTP | Pz_api_ag y Pz_catalogo_cl | 8000 | Listado, búsqueda, detalle y creación de piezas. |
+| Database Connection | Pz_transaccional_cl y Pz_transaccional_db | 5432 | Leer y escribir los datos transaccionales. |
+| Database Connection | Pz_catalogo_cl y Pz_catalogo_db | 27017 | Leer y escribir las fichas. |
+
+### Attachments
+
+| Conector | Cliente | Servidor |
 |---|---|---|
-| Navegador → Nginx | HTTP: estáticos y GraphQL JSON en `/graphql`; host 8080 → contenedor 80 en PR #10 | Un mismo origen para SPA y API. Las consultas GraphQL no son REST. |
-| Nginx → Gateway | HTTP, `/graphql`, puerto 4000 por defecto | Conserva método, cuerpo, query string y `Authorization: Bearer <JWT>`. |
-| Navegador → Nginx → Gateway | WebSocket sobre `/graphql`; biblioteca `graphql-ws`, subprotocolo `graphql-transport-ws` | Nginx prepara `Upgrade` y `Connection`; faltan servidor WebSocket y resolvers en Gateway. |
-| Gateway → Catálogo | HTTP / REST JSON, puerto 8000; `/items` según contrato | Faltan clientes HTTP del Gateway y endpoints completos del catálogo. |
-| Gateway → Transaccional | HTTP / REST JSON; puerto pendiente; `/users`, `/auctions` y demás rutas del contrato | Faltan clientes HTTP y servidor transaccional. |
-| Catálogo → MongoDB | TCP con protocolo nativo MongoDB, puerto 27017 | Previsto; el catálogo todavía devuelve datos fijos. |
-| Transaccional → PostgreSQL | TCP con protocolo nativo PostgreSQL, puerto 5432 | Previsto para el servidor; las migraciones y pruebas existentes usan PostgreSQL. |
+| GraphQL | Pz_spa_fe | Pz_api_ag |
+| REST sobre HTTP | Pz_api_ag | Pz_transaccional_cl |
+| REST sobre HTTP | Pz_api_ag | Pz_catalogo_cl |
+| Database Connection | Pz_transaccional_cl | Pz_transaccional_db |
+| Database Connection | Pz_catalogo_cl | Pz_catalogo_db |
 
-El laboratorio usa **HTTP y WS**, sin terminación TLS implementada. **HTTPS y WSS**
-corresponden a un despliegue futuro con TLS configurado; no se presentan como activos.
-TLS en el acceso público tampoco implica TLS en el enlace interno Nginx → Gateway.
+### Relaciones
 
-## Configuración, seguridad y estado de integración
-
-- En el prototipo del PR #10, CORS lo gestiona el Gateway con `CORS_ORIGIN` igual al
-  origen público de la SPA; Nginx no duplica las cabeceras. En desarrollo local,
-  Vite redirige `/graphql` a `localhost:4000` y se permite `http://localhost:5173`.
-- `JWT_SECRET` se suministra exclusivamente al Gateway; nunca forma parte del
-  frontend, sus archivos compilados o la configuración de Nginx. El navegador
-  transmite el token, no la clave de firma.
-- `USE_MOCKS=true` permite probar SPA → Nginx → Gateway sin esperar a otros servicios.
-  No implica comunicación real del Gateway con catálogo o transaccional.
-- El Compose del commit base solo incluye PostgreSQL, MongoDB y catálogo, con
-  puertos publicados 5432, 27017 y 8000. El PR #10 propone redes `public`, `backend`
-  y `data`, un único puerto público en Nginx y volúmenes nombrados para ambas bases.
-- El paso de cabeceras WebSocket no equivale a suscripciones funcionales:
-  `auctionUpdated` está definido en el esquema, pero su ejecución está pendiente.
-
-## Contratos de referencia
-
-- [Esquema GraphQL y suscripción auctionUpdated](contrato/schema.graphql).
-- [Contrato REST entre Gateway y microservicios](contrato/rest.md).
-- [Estado de implementación del Gateway](../gateway-bff/README.md).
-- [Compose del repositorio](../docker-compose.yml).
+- La SPA solo se comunica con el gateway. Los componentes de lógica y las bases de datos no son visibles para ella.
+- El gateway es el único componente que conoce a los dos componentes de lógica. Por ejemplo, para mostrar el listado le pide las fichas a Pz_catalogo_cl y el estado de las subastas a Pz_transaccional_cl, y le devuelve a la SPA una sola respuesta.
+- No hay ningún conector entre Pz_transaccional_cl y Pz_catalogo_cl, ni entre un componente de lógica y la base de datos del otro.
+- Cuando Pz_transaccional_cl acepta una puja, el gateway completa la información con Pz_catalogo_cl y la envía a todos los usuarios que están viendo esa subasta.

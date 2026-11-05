@@ -67,11 +67,12 @@ describe('BilleteraPage', () => {
       conSesion: ana,
       mocks: [
         pedirBilletera,
-        { request: { query: DEPOSIT, variables: { amount: 50000 } }, result: { data: { deposit: despues } } },
+        { request: { query: DEPOSIT, variables: { amount: 50000, promoCode: 'PROMO2026' } }, result: { data: { deposit: despues } } },
       ],
     })
 
     fireEvent.change(await screen.findByLabelText('Monto a recargar (COP)'), { target: { value: '50000' } })
+    fireEvent.change(screen.getByLabelText('Código promocional'), { target: { value: 'PROMO2026' } })
     fireEvent.click(screen.getByRole('button', { name: 'Recargar' }))
 
     expect(await screen.findByRole('status')).toHaveTextContent('Recargaste $ 50.000.')

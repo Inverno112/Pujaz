@@ -99,10 +99,12 @@ describe('HttpWalletClient', () => {
     expect(lastUrl()).toBe('http://ms/users/4/wallet');
   });
 
-  it('deposit envía el monto y conserva BAD_USER_INPUT', async () => {
+  it('deposit envía el monto y el promoCode, y conserva BAD_USER_INPUT', async () => {
     willRespond(400, { code: 'BAD_USER_INPUT', message: 'Invalid input' });
-    await expect(new HttpWalletClient(http()).deposit('4', 0)).rejects.toMatchObject({ code: 'BAD_USER_INPUT' });
-    expect(fetchFn.mock.calls[0]![1]).toMatchObject({ method: 'POST', body: '{"amount":0}' });
+    await expect(new HttpWalletClient(http()).deposit('4', 0, 'PROMO2026')).rejects.toMatchObject({
+      code: 'BAD_USER_INPUT',
+    });
+    expect(fetchFn.mock.calls[0]![1]).toMatchObject({ method: 'POST', body: '{"amount":0,"promoCode":"PROMO2026"}' });
     expect(lastUrl()).toBe('http://ms/users/4/wallet/deposits');
   });
 });
@@ -113,6 +115,17 @@ describe('HttpAuctionClient', () => {
     const auctions = await new HttpAuctionClient(http()).getAuctionsByItemIds([MS_AUCTION.itemId, 'otro']);
     expect(auctions).toEqual([MS_AUCTION]);
     expect(lastUrl()).toBe(`http://ms/auctions?itemIds=${MS_AUCTION.itemId},otro`);
+  });
+
+  it('una consulta en lote que responde null (slice vacío de Go) es una lista vacía', async () => {
+    willRespond(200, null);
+    await expect(new HttpAuctionClient(http()).getAuctionsByItemIds(['sin-subasta'])).resolves.toEqual([]);
+  });
+
+  it('una consulta en lote que no responde una lista sale INTERNAL', async () => {
+    willRespond(200, {});
+    await expect(new HttpAuctionClient(http()).getAuctionsByIds(['1'])).rejects.toMatchObject({ code: 'INTERNAL' });
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('no es una lista'));
   });
 
   it('si el MS no tiene la consulta en lote (redirección), sale INTERNAL', async () => {
@@ -142,18 +155,21 @@ describe('HttpAuctionClient', () => {
     await expect(new HttpAuctionClient(http()).getAuctionsByIds([])).resolves.toEqual([]);
     expect(fetchFn).not.toHaveBeenCalled();
   });
-});
 
-describe('crear ítems con los MS reales (POST /auctions no existe)', () => {
-  it('createItem y createAuction responden INTERNAL sin llamar a los MS', async () => {
-    await expect(new HttpItemClient(http()).createItem({ name: 'Radio', basePrice: 1000 })).rejects.toMatchObject({
-      code: 'INTERNAL',
-    });
+  it('createAuction envía itemId, basePrice y endsAt, y valida la subasta que responde el MS', async () => {
+    const created = { ...MS_AUCTION, currentPrice: 100, winningBid: null, participants: [] };
+    willRespond(201, created);
+    const input = { itemId: MS_AUCTION.itemId, basePrice: 100, endsAt: '2099-01-01T00:00:00Z' };
+    await expect(new HttpAuctionClient(http()).createAuction(input)).resolves.toEqual(created);
+    expect(lastUrl()).toBe('http://ms/auctions');
+    expect(fetchFn.mock.calls[0]![1]).toMatchObject({ method: 'POST', body: JSON.stringify(input) });
+  });
+
+  it('createAuction conserva el BAD_USER_INPUT del MS', async () => {
+    willRespond(400, { code: 'BAD_USER_INPUT', message: 'Invalid auction parameters' });
     await expect(
-      new HttpAuctionClient(http()).createAuction({ itemId: 'x', basePrice: 1000, endsAt: '2099-01-01T00:00:00Z' }),
-    ).rejects.toMatchObject({ code: 'INTERNAL' });
-    expect(fetchFn).not.toHaveBeenCalled();
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('POST /auctions no existe'));
+      new HttpAuctionClient(http()).createAuction({ itemId: 'x', basePrice: 0, endsAt: '2099-01-01T00:00:00Z' }),
+    ).rejects.toMatchObject({ code: 'BAD_USER_INPUT' });
   });
 });
 
@@ -186,5 +202,20 @@ describe('HttpItemClient', () => {
       code: 'INTERNAL',
     });
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining('ids no pedidos'));
+  });
+
+  it('createItem envía el ítem y valida el ítem que responde el MS', async () => {
+    willRespond(201, CONTRACT_ITEM);
+    const input = { name: 'Reloj', description: 'De bolsillo', basePrice: 100000 };
+    await expect(new HttpItemClient(http()).createItem(input)).resolves.toEqual(CONTRACT_ITEM);
+    expect(lastUrl()).toBe('http://ms/items');
+    expect(fetchFn.mock.calls[0]![1]).toMatchObject({ method: 'POST', body: JSON.stringify(input) });
+  });
+
+  it('el 422 de FastAPI en createItem (por ejemplo, sin descripción) llega como BAD_USER_INPUT', async () => {
+    willRespond(422, { detail: [{ loc: ['body', 'description'], msg: 'Field required' }] });
+    await expect(new HttpItemClient(http()).createItem({ name: 'Radio', basePrice: 1000 })).rejects.toMatchObject({
+      code: 'BAD_USER_INPUT',
+    });
   });
 });

@@ -47,7 +47,7 @@ func TestUserEndpoints(t *testing.T) {
 	db.Exec("DELETE FROM users")
 
 	t.Run("Registro_Válido", func(t *testing.T) {
-		req := models.CreateUserRequest{Name: "Carlos", Email: "carlos@c.com", Password: "password123"}
+		req := models.CreateUserRequest{Name: "Carlos", Email: "carlos@c.com", Password: "Password123"}
 		b, _ := json.Marshal(req)
 		res, err := http.Post(server.URL+"/users", "application/json", bytes.NewReader(b))
 		if err != nil { t.Fatal(err) }
@@ -69,7 +69,7 @@ func TestUserEndpoints(t *testing.T) {
 
 	// 2. Email Repetido
 	t.Run("Email_Repetido", func(t *testing.T) {
-		req := models.CreateUserRequest{Name: "Copia", Email: "carlos@c.com", Password: "password123"}
+		req := models.CreateUserRequest{Name: "Copia", Email: "carlos@c.com", Password: "Password123"}
 		b, _ := json.Marshal(req)
 		res, _ := http.Post(server.URL+"/users", "application/json", bytes.NewReader(b))
 		if res.StatusCode != 409 {
@@ -79,7 +79,7 @@ func TestUserEndpoints(t *testing.T) {
 
 	// 3. Credenciales Correctas
 	t.Run("Credenciales_Correctas", func(t *testing.T) {
-		req := models.VerifyCredentialsRequest{Email: "carlos@c.com", Password: "password123"}
+		req := models.VerifyCredentialsRequest{Email: "carlos@c.com", Password: "Password123"}
 		b, _ := json.Marshal(req)
 		res, _ := http.Post(server.URL+"/users/verify-credentials", "application/json", bytes.NewReader(b))
 		if res.StatusCode != 200 {
@@ -109,6 +109,74 @@ func TestUserEndpoints(t *testing.T) {
 		resGet, _ := http.Get(server.URL+"/users/999")
 		if resGet.StatusCode != 404 {
 			t.Errorf("Expected 404 for non-existent user get, got %d", resGet.StatusCode)
+		}
+	})
+
+	// 6. Usuario Eliminado: el borrado es lógico, pero para la API ya no existe
+	t.Run("Usuario_Eliminado", func(t *testing.T) {
+		req := models.CreateUserRequest{Name: "Borrar", Email: "borrar@c.com", Password: "Password123"}
+		b, _ := json.Marshal(req)
+		res, err := http.Post(server.URL+"/users", "application/json", bytes.NewReader(b))
+		if err != nil { t.Fatal(err) }
+		var user models.User
+		json.NewDecoder(res.Body).Decode(&user)
+
+		send := func(method, body string) int {
+			r, _ := http.NewRequest(method, server.URL+"/users/"+user.ID, bytes.NewReader([]byte(body)))
+			r.Header.Set("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(r)
+			if err != nil { t.Fatal(err) }
+			return resp.StatusCode
+		}
+
+		if code := send(http.MethodDelete, ""); code != 204 {
+			t.Fatalf("Expected 204 on delete, got %d", code)
+		}
+		if code := send(http.MethodGet, ""); code != 404 {
+			t.Errorf("Expected 404 on get after delete, got %d", code)
+		}
+		if code := send(http.MethodPatch, `{"name":"Otro"}`); code != 404 {
+			t.Errorf("Expected 404 on patch after delete, got %d", code)
+		}
+		if code := send(http.MethodDelete, ""); code != 404 {
+			t.Errorf("Expected 404 on second delete, got %d", code)
+		}
+	})
+
+	// 7. Cambio de Contraseña: la nueva entra, la vieja no
+	t.Run("Cambio_Password", func(t *testing.T) {
+		req := models.CreateUserRequest{Name: "Clave", Email: "clave@c.com", Password: "Password123"}
+		b, _ := json.Marshal(req)
+		res, err := http.Post(server.URL+"/users", "application/json", bytes.NewReader(b))
+		if err != nil { t.Fatal(err) }
+		var user models.User
+		json.NewDecoder(res.Body).Decode(&user)
+
+		patch := func(body string) int {
+			r, _ := http.NewRequest(http.MethodPatch, server.URL+"/users/"+user.ID, bytes.NewReader([]byte(body)))
+			r.Header.Set("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(r)
+			if err != nil { t.Fatal(err) }
+			return resp.StatusCode
+		}
+		login := func(password string) int {
+			b, _ := json.Marshal(models.VerifyCredentialsRequest{Email: "clave@c.com", Password: password})
+			resp, err := http.Post(server.URL+"/users/verify-credentials", "application/json", bytes.NewReader(b))
+			if err != nil { t.Fatal(err) }
+			return resp.StatusCode
+		}
+
+		if code := patch(`{"password":"Nueva5678"}`); code != 200 {
+			t.Fatalf("Expected 200 on password change, got %d", code)
+		}
+		if code := login("Nueva5678"); code != 200 {
+			t.Errorf("Expected 200 with new password, got %d", code)
+		}
+		if code := login("Password123"); code != 401 {
+			t.Errorf("Expected 401 with old password, got %d", code)
+		}
+		if code := patch(`{"password":"abc"}`); code != 400 {
+			t.Errorf("Expected 400 on weak password, got %d", code)
 		}
 	})
 }

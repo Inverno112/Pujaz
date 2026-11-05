@@ -23,6 +23,7 @@ export function Layout() {
           </NavLink>
           {usuario ? (
             <>
+              <NavLink to="/publicar">Publicar artículo</NavLink>
               <NavLink to="/billetera">Mi billetera</NavLink>
               <NavLink to="/perfil">Mi perfil</NavLink>
             </>

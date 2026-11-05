@@ -3,6 +3,9 @@ import type { MovementType, Wallet, WalletClient, WalletMovement } from '../../.
 
 const HOUR = 60 * 60 * 1000;
 
+// Único código que acepta el MS para recargar (wallet_controller.go).
+export const VALID_PROMO_CODE = 'PROMO2026';
+
 // Coherente con la subasta 12 de auction.mock.ts: Luis pujó 110000, Ana lo superó con 120000
 // y a Luis se le devolvió su monto. La billetera de Ana es el ejemplo de rest.md §1.2.
 function seedWallets(now: number): Wallet[] {
@@ -38,9 +41,12 @@ export class MockWalletClient implements WalletClient {
     return structuredClone(this.findOrCreate(userId));
   }
 
-  async deposit(userId: string, amount: number): Promise<Wallet> {
+  async deposit(userId: string, amount: number, promoCode: string): Promise<Wallet> {
     if (!(amount > 0)) {
       throw new AppError('BAD_USER_INPUT', 'El monto de la recarga debe ser mayor que cero.');
+    }
+    if (promoCode !== VALID_PROMO_CODE) {
+      throw new AppError('BAD_USER_INPUT', 'Código promocional inválido.');
     }
     const wallet = this.findOrCreate(userId);
     wallet.available += amount;

@@ -10,3 +10,11 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# Dependencias y resultados de pruebas
+node_modules/
+test-results/
+playwright-report/
+
+# Notas personales de estudio (no van al repo).
+ESTUDIO_DOCKER.md

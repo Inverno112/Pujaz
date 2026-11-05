@@ -31,10 +31,11 @@ const WALLET = `{
     movements { id type amount createdAt auction { id currentPrice } }
   }
 }`;
-const DEPOSIT = `mutation ($amount: Float!) {
-  deposit(amount: $amount) { available reserved movements { type amount auction { id } } }
+const DEPOSIT = `mutation ($amount: Float!, $promoCode: String!) {
+  deposit(amount: $amount, promoCode: $promoCode) { available reserved movements { type amount auction { id } } }
 }`;
-const REGISTER = `mutation { register(input: { name: "Sofía", email: "sofia@correo.com", password: "secreto789" }) { token } }`;
+const PROMO = 'PROMO2026';
+const REGISTER = `mutation { register(input: { name: "Sofía", email: "sofia@correo.com", password: "Secreto789" }) { token } }`;
 
 describe('billetera', () => {
   it('1. wallet sin token devuelve UNAUTHENTICATED', async () => {
@@ -78,7 +79,7 @@ describe('billetera', () => {
   it('3. deposit con monto positivo devuelve la billetera con el saldo aumentado', async () => {
     const { graphql, tokenFor } = setup();
     const token = await tokenFor(ANA);
-    const { data, errors } = await graphql(DEPOSIT, { amount: 50000 }, token);
+    const { data, errors } = await graphql(DEPOSIT, { amount: 50000, promoCode: PROMO }, token);
     expect(errors).toBeUndefined();
     expect(data.deposit).toMatchObject({ available: 430000, reserved: 120000 });
     expect(data.deposit.movements[0]).toEqual({ type: 'DEPOSIT', amount: 50000, auction: null });
@@ -90,14 +91,29 @@ describe('billetera', () => {
 
   it.each([0, -1000])('4. deposit(amount: %s) devuelve BAD_USER_INPUT', async (amount) => {
     const { graphql, tokenFor } = setup();
-    const { errors } = await graphql(DEPOSIT, { amount }, await tokenFor(ANA));
+    const { errors } = await graphql(DEPOSIT, { amount, promoCode: PROMO }, await tokenFor(ANA));
+    expect(errors[0].extensions.code).toBe('BAD_USER_INPUT');
+  });
+
+  it('4c. deposit con un promoCode inválido devuelve BAD_USER_INPUT y no cambia la billetera', async () => {
+    const { graphql, tokenFor } = setup();
+    const token = await tokenFor(ANA);
+    const { errors } = await graphql(DEPOSIT, { amount: 50000, promoCode: 'OTRO' }, token);
+    expect(errors[0].extensions.code).toBe('BAD_USER_INPUT');
+    const { data } = await graphql(WALLET, undefined, token);
+    expect(data.wallet.available).toBe(380000);
+  });
+
+  it('4d. deposit sin promoCode devuelve BAD_USER_INPUT (lo exige el schema)', async () => {
+    const { graphql, tokenFor } = setup();
+    const { errors } = await graphql('mutation { deposit(amount: 50000) { available } }', {}, await tokenFor(ANA));
     expect(errors[0].extensions.code).toBe('BAD_USER_INPUT');
   });
 
   it('4b. deposit sin token devuelve UNAUTHENTICATED y no cambia ninguna billetera', async () => {
     const { graphql, clients } = setup();
     const spy = vi.spyOn(clients.walletClient, 'deposit');
-    const { errors } = await graphql(DEPOSIT, { amount: 50000 });
+    const { errors } = await graphql(DEPOSIT, { amount: 50000, promoCode: PROMO });
     expect(errors[0].extensions.code).toBe('UNAUTHENTICATED');
     expect(spy).not.toHaveBeenCalled();
   });

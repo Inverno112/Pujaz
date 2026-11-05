@@ -1,2 +1,2 @@
-DELETE FROM wallet_movements WHERE type = 'recarga';
+DELETE FROM wallet_movements;
 DELETE FROM wallets;

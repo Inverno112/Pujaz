@@ -8,6 +8,9 @@ import { DELETE_USER, UPDATE_USER, type Usuario } from '../api/usuarios'
 import { useSesion } from '../session/SessionContext'
 import { formatearFecha } from '../utils/formato'
 
+const REGLA_NOMBRE = /^[A-Za-záéíóúÁÉÍÓÚñÑ\s]{3,50}$/
+const REGLA_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+
 function mensajeDeError(error: unknown): string {
   switch (codigoError(error)) {
     case 'EMAIL_TAKEN':
@@ -45,8 +48,12 @@ function Perfil({ usuario }: { usuario: Usuario }) {
     evento.preventDefault()
     setError(null)
     setGuardado(false)
-    if (password && password.length < 8) {
-      setError('La contraseña nueva debe tener al menos 8 caracteres.')
+    if (name.trim() !== usuario.name && !REGLA_NOMBRE.test(name.trim())) {
+      setError('El nombre debe tener entre 3 y 50 caracteres y solo contener letras y espacios.')
+      return
+    }
+    if (password && !REGLA_PASSWORD.test(password)) {
+      setError('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.')
       return
     }
     // Solo se envía lo que cambió.

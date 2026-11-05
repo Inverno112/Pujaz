@@ -6,7 +6,8 @@ import { codigoError } from '../api/errores'
 import { REGISTER } from '../api/usuarios'
 import { useSesion } from '../session/SessionContext'
 
-const MINIMO_CONTRASENA = 8
+const REGLA_NOMBRE = /^[A-Za-záéíóúÁÉÍÓÚñÑ\s]{3,50}$/
+const REGLA_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
 
 function mensajeDeError(error: unknown): string {
   switch (codigoError(error)) {
@@ -43,10 +44,17 @@ export function RegistroPage() {
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
     setError(null)
-    if (password.length < MINIMO_CONTRASENA) {
-      setError(`La contraseña debe tener al menos ${MINIMO_CONTRASENA} caracteres.`)
+    
+    if (!REGLA_NOMBRE.test(name.trim())) {
+      setError('El nombre debe tener entre 3 y 50 caracteres y solo contener letras y espacios.')
       return
     }
+
+    if (!REGLA_PASSWORD.test(password)) {
+      setError('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.')
+      return
+    }
+
     try {
       const { data } = await registrar({
         variables: { input: { name: name.trim(), email: email.trim(), password } },
@@ -81,7 +89,7 @@ export function RegistroPage() {
           value={email}
           onChange={(evento) => setEmail(evento.target.value)}
         />
-        <label htmlFor="registro-password">Contraseña (mínimo 8 caracteres)</label>
+        <label htmlFor="registro-password">Contraseña (mínimo 8 caracteres, con mayúscula y número)</label>
         <input
           id="registro-password"
           type="password"

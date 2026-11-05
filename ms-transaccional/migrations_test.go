@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"os"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -17,9 +18,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const (
-	pgConnStr    = "postgres://pujaz_user:pujaz_password@localhost:55432/pujaz_transaccional?sslmode=disable"
-	mongoConnStr = "mongodb://localhost:27017"
+func getEnvOrDefault(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
+var (
+	pgConnStr    = getEnvOrDefault("TEST_DB_URL", "postgres://pujaz_user:pujaz_password@127.0.0.1:5432/pujaz_transaccional?sslmode=disable")
+	mongoConnStr = getEnvOrDefault("TEST_MONGO_URL", "mongodb://127.0.0.1:27017")
 )
 
 func getPgDB(t *testing.T) *sql.DB {
