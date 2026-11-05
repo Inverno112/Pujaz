@@ -3,7 +3,7 @@
 ## 1. Preparar Flutter
 
 ```bash
-cd /home/adiosa/pujaz/Pujaz/frontend-movil
+cd /workspaces/Pujaz/frontend-movil
 flutter create --platforms=android,ios .
 flutter pub get
 flutter analyze
@@ -57,27 +57,72 @@ flutter devices
 
 ## 4. Ejecutar en el móvil
 
+En modo debug, la aplicación muestra una pantalla para introducir solo el host
+del equipo que ejecuta Docker. Usa `10.0.2.2` en el emulador Android o la IP
+LAN del computador en un teléfono físico. No escribas `http://`, `ws://`, el
+puerto ni `/graphql`.
+
 ```bash
-hostname -I
+flutter run
+```
+
+El host se guarda de forma segura y los siguientes arranques debug entran
+directamente a la aplicación usando ese valor. Para cambiarlo, borra los datos
+de la app o ejecuta:
+
+```bash
+adb shell pm clear com.example.pujaz_mobile
+```
+
+Si usas un puerto distinto de `8080`, conserva el puerto mediante las URLs de
+entorno; la pantalla debug cambia únicamente el host:
+
+```bash
 flutter run \
-  --dart-define=PUJAZ_GRAPHQL_HTTP=http://IP_DEL_PC:8080/graphql \
-  --dart-define=PUJAZ_GRAPHQL_WS=ws://IP_DEL_PC:8080/graphql
+  --dart-define=PUJAZ_GRAPHQL_HTTP=http://IP_DEL_PC:9090/graphql \
+  --dart-define=PUJAZ_GRAPHQL_WS=ws://IP_DEL_PC:9090/graphql
 ```
 
 ## 5. Generar e instalar APK
 
-```bash
-flutter build apk --debug \
-  --dart-define=PUJAZ_GRAPHQL_HTTP=http://IP_DEL_PC:8080/graphql \
-  --dart-define=PUJAZ_GRAPHQL_WS=ws://IP_DEL_PC:8080/graphql
+Ejecuta estos comandos desde la carpeta del frontend móvil. En este Codespace
+`flutter` puede no estar en el `PATH`, por eso se usa la ruta completa del SDK.
+Si tu terminal ya reconoce `flutter`, puedes sustituir
+`/home/codespace/flutter-sdk/bin/flutter` por `flutter`.
 
-flutter install
+```bash
+cd /workspaces/Pujaz/frontend-movil
+/home/codespace/flutter-sdk/bin/flutter build apk --debug
 ```
 
-APK generado:
+No copies literalmente `IP_DEL_PC` en este comando. Como la aplicación debug
+permite configurar el host al abrirse, el APK se genera sin añadir las URLs
+GraphQL. En el teléfono, introduce la IP LAN del equipo que ejecuta Docker;
+en el emulador Android usa `10.0.2.2`.
+
+El APK se genera en:
 
 ```text
-build/app/outputs/flutter-apk/app-debug.apk
+/workspaces/Pujaz/frontend-movil/build/app/outputs/flutter-apk/app-debug.apk
+```
+
+Para instalarlo en un celular conectado por USB, activa **Depuración USB**,
+acepta la autorización y verifica que aparezca:
+
+```bash
+adb devices
+```
+
+Después instala el APK con:
+
+```bash
+/home/codespace/flutter-sdk/bin/flutter install
+```
+
+También puedes instalar el archivo directamente:
+
+```text
+adb install -r /workspaces/Pujaz/frontend-movil/build/app/outputs/flutter-apk/app-debug.apk
 ```
 
 ## 6. Usar este Codespace desde VS Code local
@@ -101,8 +146,8 @@ code .
 
 ### Flujo y alcance de la configuración debug
 
-Al iniciar la aplicación móvil en modo debug, aparece una vista independiente
-para introducir la IP o el host local que ejecuta el gateway de Pujaz. Al
+Al iniciar la aplicación móvil en modo debug sin un host guardado, aparece una
+vista para introducir la IP o el host local del endpoint GraphQL de Pujaz. Al
 seleccionar **Guardar y continuar**, la aplicación:
 
 1. Guarda la IP en `flutter_secure_storage`.
@@ -110,8 +155,9 @@ seleccionar **Guardar y continuar**, la aplicación:
 3. Inicializa el cliente GraphQL y restaura la sesión.
 4. Abre la aplicación móvil normalmente.
 
-En los siguientes arranques se reutiliza la IP guardada. Esta vista solo existe
-en modo debug; las compilaciones de producción siguen usando las URLs definidas
+En los siguientes arranques se reutiliza automáticamente el host guardado. Para
+mostrar de nuevo la vista, borra los datos de la app. Esta vista solo existe en
+modo debug; las compilaciones de producción siguen usando las URLs definidas
 con `--dart-define`.
 
 Este flujo está aislado dentro de `frontend-movil` y solo afecta la

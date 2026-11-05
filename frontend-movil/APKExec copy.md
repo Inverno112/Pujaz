@@ -49,15 +49,28 @@ flutter pub get
 
 ## 3. Generar el APK
 
-Usa la URL del gateway accesible desde el dispositivo. Para un emulador Android, `10.0.2.2` apunta al equipo anfitrión:
+En modo debug, la aplicación muestra una pantalla para introducir solo el host
+del equipo que ejecuta Docker. Usa `10.0.2.2` en el emulador Android o la IP
+LAN del computador en un teléfono físico. No escribas `http://`, `ws://`, el
+puerto ni `/graphql`.
 
 ```bash
-flutter build apk --debug \
-	--dart-define=PUJAZ_GRAPHQL_HTTP=http://10.0.2.2:8080/graphql \
-	--dart-define=PUJAZ_GRAPHQL_WS=ws://10.0.2.2:8080/graphql
+flutter run
 ```
 
-En un teléfono físico, reemplaza `10.0.2.2` por la IP local del equipo que ejecuta el gateway, por ejemplo `192.168.1.20`.
+El host se guarda de forma segura y los siguientes arranques debug entran
+directamente a la aplicación usando ese valor. Para cambiarlo, borra los datos
+de la app o ejecuta:
+
+```bash
+adb shell pm clear com.example.pujaz_mobile
+```
+
+Para generar el APK:
+
+```bash
+flutter build apk --debug
+```
 
 El APK se genera en:
 
