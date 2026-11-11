@@ -30,6 +30,10 @@ Future<void> main() async {
 
   if (kDebugMode) {
     final savedHost = await AppConfig.readDebugHost(secureStorage);
+    if (savedHost != null && AppConfig.isValidHost(savedHost)) {
+      await start(environmentConfig.withHost(savedHost));
+      return;
+    }
     runApp(
       DebugConfigPage(
         initialHost: savedHost ?? environmentConfig.host,

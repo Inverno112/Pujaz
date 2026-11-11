@@ -25,9 +25,12 @@ debe usarse la IP local de la máquina que ejecuta Docker. Para iOS Simulator,
 normalmente se puede usar `127.0.0.1`.
 
 En modo debug, la aplicación muestra al iniciar una vista para configurar esta
-IP o host sin modificar el código. El valor se guarda de forma segura y se
-reutiliza en los siguientes arranques. En producción se usan las URLs definidas
-por `--dart-define`.
+IP o host sin modificar el código. El valor se guarda de forma segura y se usa
+automáticamente en los siguientes arranques. Para cambiarlo, borra los datos de
+la app (`adb shell pm clear com.example.pujaz_mobile`) y vuelve a ejecutarla.
+El puerto y la ruta definidos por `--dart-define` se conservan al cambiar solo
+el host. En producción se usan las URLs completas definidas por
+`--dart-define`.
 
 El token se almacena con `flutter_secure_storage`; no se guarda en preferencias
 ni se imprime en logs.
