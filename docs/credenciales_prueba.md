@@ -10,7 +10,7 @@ Estos datos se cargan solos la primera vez que se levanta el sistema (migracione
 | Heider | `heider@correo.com` | `12345678` | 50.000 COP disponibles |
 | Cata | `cata@correo.com` | `12345678` | 50.000 COP disponibles |
 
-Para registrar un usuario nuevo, la contraseña debe tener al menos 8 caracteres, con mayúscula, minúscula y número (por ejemplo, `Subasta2026`). Esa regla aplica al registrarse y al cambiar la contraseña, no al iniciar sesión.
+Para registrar un usuario nuevo, la contraseña debe tener al menos 8 caracteres, con mayúscula, minúscula, número y símbolo (por ejemplo, `Subasta2026!`). Esa regla aplica al registrarse y al cambiar la contraseña, no al iniciar sesión.
 
 ## Billetera
 

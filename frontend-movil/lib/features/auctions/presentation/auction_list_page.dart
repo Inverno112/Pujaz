@@ -14,6 +14,7 @@ class AuctionListPage extends StatefulWidget {
 }
 
 class _AuctionListPageState extends State<AuctionListPage> {
+  static const _auctionRefreshInterval = Duration(seconds: 30);
   final _search = TextEditingController();
   String? _submittedSearch;
 
@@ -27,13 +28,19 @@ class _AuctionListPageState extends State<AuctionListPage> {
   Widget build(BuildContext context) => AppScaffold(
         title: 'Subastas',
         body: Query(
-          options: queryOptions(itemsQuery, variables: {'search': _submittedSearch}),
+          options: queryOptions(
+            itemsQuery,
+            variables: {'search': _submittedSearch},
+            pollInterval: _auctionRefreshInterval,
+          ),
           builder: (result, {fetchMore, refetch}) {
             if (result.isLoading && result.data == null) {
               return const Center(child: CircularProgressIndicator());
             }
             if (result.hasException && result.data == null) {
-              return _RetryView(message: 'No se pudieron cargar las subastas.', onRetry: refetch);
+              return _RetryView(
+                  message: 'No se pudieron cargar las subastas.',
+                  onRetry: refetch);
             }
             final items = (result.data?['items'] as List<dynamic>? ?? const []);
             return RefreshIndicator(
@@ -41,7 +48,8 @@ class _AuctionListPageState extends State<AuctionListPage> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  Text('Piezas abiertas a puja', style: Theme.of(context).textTheme.headlineSmall),
+                  Text('Piezas abiertas a puja',
+                      style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: 4),
                   Text('Encuentra una pieza y participa en tiempo real.',
                       style: Theme.of(context).textTheme.bodyMedium),
@@ -52,19 +60,27 @@ class _AuctionListPageState extends State<AuctionListPage> {
                     leading: const Icon(Icons.search),
                     trailing: [
                       IconButton(
-                        onPressed: () => setState(() => _submittedSearch = _search.text.trim().isEmpty ? null : _search.text.trim()),
+                        onPressed: () => setState(() => _submittedSearch =
+                            _search.text.trim().isEmpty
+                                ? null
+                                : _search.text.trim()),
                         icon: const Icon(Icons.arrow_forward),
                       ),
                     ],
-                    onSubmitted: (value) => setState(() => _submittedSearch = value.trim().isEmpty ? null : value.trim()),
+                    onSubmitted: (value) => setState(() => _submittedSearch =
+                        value.trim().isEmpty ? null : value.trim()),
                   ),
                   const SizedBox(height: 20),
                   if (items.isEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 48),
-                      child: Center(child: Text(_submittedSearch == null ? 'Todavía no hay artículos.' : 'No hay coincidencias.')),
+                      child: Center(
+                          child: Text(_submittedSearch == null
+                              ? 'Todavía no hay artículos.'
+                              : 'No hay coincidencias.')),
                     ),
-                  ...items.map((item) => _AuctionCard(item: item as Map<String, dynamic>)),
+                  ...items.map((item) =>
+                      _AuctionCard(item: item as Map<String, dynamic>)),
                 ],
               ),
             );
@@ -90,21 +106,39 @@ class _AuctionCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (images.isNotEmpty)
-              Image.network(images.first as String, height: 170, width: double.infinity, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox(height: 170, child: Icon(Icons.image_not_supported_outlined, size: 48))),
+              Image.network(images.first as String,
+                  height: 170,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox(
+                      height: 170,
+                      child:
+                          Icon(Icons.image_not_supported_outlined, size: 48))),
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                if (item['category'] != null) Text(item['category'] as String, style: Theme.of(context).textTheme.labelMedium),
-                const SizedBox(height: 4),
-                Text(item['name'] as String, style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 8),
-                Text(auction == null ? 'Precio base' : 'Precio actual'),
-                Text(formatCop((auction?['currentPrice'] ?? item['basePrice']) as num),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Text(auction == null ? 'Aún sin subasta' : 'Subasta ${auction['status'] == 'OPEN' ? 'abierta' : 'cerrada'}'),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (item['category'] != null)
+                      Text(item['category'] as String,
+                          style: Theme.of(context).textTheme.labelMedium),
+                    const SizedBox(height: 4),
+                    Text(item['name'] as String,
+                        style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 8),
+                    Text(auction == null ? 'Precio base' : 'Precio actual'),
+                    Text(
+                        formatCop((auction?['currentPrice'] ??
+                            item['basePrice']) as num),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text(auction == null
+                        ? 'Aún sin subasta'
+                        : 'Subasta ${auction['status'] == 'OPEN' ? 'abierta' : 'cerrada'}'),
+                  ]),
             ),
           ],
         ),
@@ -123,7 +157,9 @@ class _RetryView extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text(message),
           const SizedBox(height: 12),
-          FilledButton(onPressed: onRetry == null ? null : () => onRetry!(), child: const Text('Reintentar')),
+          FilledButton(
+              onPressed: onRetry == null ? null : () => onRetry!(),
+              child: const Text('Reintentar')),
         ]),
       );
 }

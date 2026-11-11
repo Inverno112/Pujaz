@@ -8,7 +8,7 @@ const tokens = new TokenService('x'.repeat(32), '24h');
 describe('AuthService', () => {
   it('register crea el usuario y firma un token con su id', async () => {
     const auth = new AuthService(new MockUserClient(), tokens);
-    const { token, user } = await auth.register({ name: 'Luis', email: 'luis@correo.com', password: 'Secreto456' });
+    const { token, user } = await auth.register({ name: 'Luis', email: 'luis@correo.com', password: 'Secreto456!' });
     await expect(tokens.verify(token)).resolves.toEqual({ userId: user.id });
   });
 

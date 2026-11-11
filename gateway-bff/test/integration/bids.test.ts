@@ -29,7 +29,7 @@ function setup() {
   async function newBidder(name: string, balance: number) {
     const { data } = await graphql(
       `mutation ($input: RegisterInput!) { register(input: $input) { token user { id } } }`,
-      { input: { name, email: `${name.toLowerCase()}@correo.com`, password: 'Secreto123' } },
+      { input: { name, email: `${name.toLowerCase()}@correo.com`, password: 'Secreto123!' } },
     );
     const { token, user } = data.register;
     if (balance > 0) await graphql(

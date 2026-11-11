@@ -27,11 +27,17 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _submit() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     final session = SessionScope.of(context);
     final ok = await session.login(_email.text, _password.text);
     if (!mounted) return;
-    setState(() { _loading = false; _error = ok ? null : graphQlErrorMessage(session.error ?? ''); });
+    setState(() {
+      _loading = false;
+      _error = ok ? null : graphQlErrorMessage(session.error ?? '');
+    });
     if (ok) context.go(widget.from ?? '/');
   }
 
@@ -39,13 +45,30 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) => _AuthLayout(
         title: 'Iniciar sesión',
         child: Column(children: [
-          TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Correo')),
+          TextField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'Correo')),
           const SizedBox(height: 12),
-          TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Contraseña')),
+          TextField(
+              controller: _password,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Contraseña')),
           const SizedBox(height: 20),
-          SizedBox(width: double.infinity, child: FilledButton(onPressed: _loading ? null : _submit, child: Text(_loading ? 'Entrando…' : 'Iniciar sesión'))),
-          if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
-          TextButton(onPressed: () => context.go('/registro'), child: const Text('¿No tienes cuenta? Crea una')),
+          SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                  onPressed: _loading ? null : _submit,
+                  child: Text(_loading ? 'Entrando…' : 'Iniciar sesión'))),
+          if (_error != null)
+            Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(_error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error))),
+          TextButton(
+              onPressed: () => context.go('/registro'),
+              child: const Text('¿No tienes cuenta? Crea una')),
         ]),
       );
 }
@@ -72,11 +95,34 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _submit() async {
-    setState(() { _loading = true; _error = null; });
+    final name = _name.text.trim();
+    final email = _email.text.trim();
+    final password = _password.text;
+    if (name.isEmpty) {
+      setState(() => _error = 'Ingresa tu nombre.');
+      return;
+    }
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      setState(() => _error = 'Ingresa un correo válido.');
+      return;
+    }
+    if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$')
+        .hasMatch(password)) {
+      setState(() => _error =
+          'La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un símbolo.');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     final session = SessionScope.of(context);
-    final ok = await session.register(_name.text, _email.text, _password.text);
+    final ok = await session.register(name, email, password);
     if (!mounted) return;
-    setState(() { _loading = false; _error = ok ? null : graphQlErrorMessage(session.error ?? ''); });
+    setState(() {
+      _loading = false;
+      _error = ok ? null : graphQlErrorMessage(session.error ?? '');
+    });
     if (ok) context.go('/');
   }
 
@@ -84,15 +130,35 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) => _AuthLayout(
         title: 'Crear cuenta',
         child: Column(children: [
-          TextField(controller: _name, decoration: const InputDecoration(labelText: 'Nombre')),
+          TextField(
+              controller: _name,
+              decoration: const InputDecoration(labelText: 'Nombre')),
           const SizedBox(height: 12),
-          TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Correo')),
+          TextField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'Correo')),
           const SizedBox(height: 12),
-          TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Contraseña (mínimo 8 caracteres)')),
+          TextField(
+              controller: _password,
+              obscureText: true,
+              decoration: const InputDecoration(
+                  labelText: 'Contraseña (mínimo 8 caracteres)')),
           const SizedBox(height: 20),
-          SizedBox(width: double.infinity, child: FilledButton(onPressed: _loading ? null : _submit, child: Text(_loading ? 'Creando…' : 'Registrarme'))),
-          if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
-          TextButton(onPressed: () => context.go('/login'), child: const Text('Ya tengo una cuenta')),
+          SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                  onPressed: _loading ? null : _submit,
+                  child: Text(_loading ? 'Creando…' : 'Registrarme'))),
+          if (_error != null)
+            Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(_error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error))),
+          TextButton(
+              onPressed: () => context.go('/login'),
+              child: const Text('Ya tengo una cuenta')),
         ]),
       );
 }

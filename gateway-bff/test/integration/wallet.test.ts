@@ -35,7 +35,7 @@ const DEPOSIT = `mutation ($amount: Float!, $promoCode: String!) {
   deposit(amount: $amount, promoCode: $promoCode) { available reserved movements { type amount auction { id } } }
 }`;
 const PROMO = 'PROMO2026';
-const REGISTER = `mutation { register(input: { name: "Sofía", email: "sofia@correo.com", password: "Secreto789" }) { token } }`;
+const REGISTER = `mutation { register(input: { name: "Sofía", email: "sofia@correo.com", password: "Secreto789!" }) { token } }`;
 
 describe('billetera', () => {
   it('1. wallet sin token devuelve UNAUTHENTICATED', async () => {

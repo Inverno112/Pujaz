@@ -62,7 +62,7 @@ describe('HttpUserClient', () => {
 
   it('un usuario completo pasa, sin los campos que el contrato no tiene', async () => {
     willRespond(201, { ...CONTRACT_USER, role: 'comprador', status: 'activa' });
-    const user = await new HttpUserClient(http()).createUser({ name: 'Ana', email: 'ana@correo.com', password: 'secreto123' });
+    const user = await     new HttpUserClient(http()).createUser({ name: 'Ana', email: 'ana@correo.com', password: 'Secreto123!' });
     expect(user).toEqual(CONTRACT_USER);
     expect(lastUrl()).toBe('http://ms/users');
   });

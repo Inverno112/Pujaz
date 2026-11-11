@@ -98,8 +98,16 @@ const deleteUserMutation = r'''
 mutation DeleteUser { deleteUser }
 ''';
 
-QueryOptions queryOptions(String document, {Map<String, dynamic>? variables}) =>
-    QueryOptions(document: gql(document), variables: variables ?? const {});
+QueryOptions queryOptions(
+  String document, {
+  Map<String, dynamic>? variables,
+  Duration? pollInterval,
+}) =>
+    QueryOptions(
+      document: gql(document),
+      variables: variables ?? const {},
+      pollInterval: pollInterval,
+    );
 
 MutationOptions mutationOptions(
   String document, {

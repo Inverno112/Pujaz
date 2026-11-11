@@ -40,7 +40,7 @@ const WALLET = `{ wallet { available } }`;
 const DEPOSIT = `mutation ($amount: Float!, $promoCode: String!) { deposit(amount: $amount, promoCode: $promoCode) { available } }`;
 const BID = `mutation ($auctionId: ID!, $amount: Float!) { placeBid(auctionId: $auctionId, amount: $amount) { id } }`;
 
-const LUIS = { name: 'Luis', email: 'luis@correo.com', password: 'Secreto456' };
+const LUIS = { name: 'Luis', email: 'luis@correo.com', password: 'Secreto456!' };
 
 describe('perfil', () => {
   it('1. updateUser y deleteUser sin token devuelven UNAUTHENTICATED y no llaman al MS', async () => {
